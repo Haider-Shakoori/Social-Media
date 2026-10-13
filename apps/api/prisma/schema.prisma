@@ -72,6 +72,7 @@ model User {
   platformAuditEvents PlatformAuditEvent[]
   platformSettings PlatformSetting[]
   providerUpdates SocialProviderPolicy[]
+  socialOAuthAttempts SocialOAuthAttempt[]
 
   @@map("users")
 }
@@ -131,6 +132,7 @@ model Brand {
   connections SocialConnection[]
   posts       ContentPost[]
   members     BrandMember[]
+  oauthAttempts SocialOAuthAttempt[]
   industry    String?  @db.VarChar(120)
   description String?  @db.Text
   website     String?  @db.VarChar(500)
@@ -154,11 +156,16 @@ model SocialConnection {
   state                ConnectionState @default(DISCONNECTED)
   externalAccountId    String?         @map("external_account_id") @db.VarChar(255)
   encryptedCredentials String?         @map("encrypted_credentials") @db.Text
+  externalAccountName  String?         @map("external_account_name") @db.VarChar(255)
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  tokenScopes String[] @default([]) @map("token_scopes")
+  connectedAt DateTime? @map("connected_at")
   createdAt            DateTime        @default(now()) @map("created_at")
   brand                Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
   targets              PostTarget[]
 
   @@index([brandId, platform])
+  @@unique([brandId,platform,externalAccountId])
   @@map("social_connections")
 }
 
@@ -233,6 +240,7 @@ model Session {
   revokedAt DateTime? @map("revoked_at")
   userAgent String? @map("user_agent") @db.VarChar(300)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialOAuthAttempts SocialOAuthAttempt[]
 
   @@index([userId, expiresAt])
   @@map("sessions")
@@ -526,4 +534,27 @@ model SocialProviderPolicy {
   updatedBy User? @relation(fields:[updatedById],references:[id],onDelete:SetNull)
 
   @@map("social_provider_policies")
+}
+
+
+model SocialOAuthAttempt {
+ id String @id @default(uuid()) @db.Uuid
+ stateHash String @unique @map("state_hash") @db.Char(64)
+ network String @db.VarChar(20)
+ brandId String @map("brand_id") @db.Uuid
+ sessionId String @map("session_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ verifierCipher String? @map("verifier_cipher") @db.Text
+ pendingCipher String? @map("pending_cipher") @db.Text
+ createdAt DateTime @default(now()) @map("created_at")
+ expiresAt DateTime @map("expires_at")
+ stateUsedAt DateTime? @map("state_used_at")
+ selectedAt DateTime? @map("selected_at")
+ brand Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
+ session Session @relation(fields:[sessionId],references:[id],onDelete:Cascade)
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+
+ @@index([userId,expiresAt])
+ @@index([brandId,createdAt])
+ @@map("social_oauth_attempts")
 }
