@@ -50,7 +50,8 @@ export class OAuthService{
   ]);
   return {providers:['meta','x'].map(network=>({
     network,
-    configured:hasOAuthConfig(network as ConnectNetwork),
+    configured:hasOAuthConfig(network as ConnectNetwork)&&Boolean(process.env.SOCIAL_TOKEN_ENCRYPTION_KEY)&&
+      process.env[(network==='meta'?'META':'X')+'_CONNECT_ENABLED']==='true',
     testingEnabled:policies.some(p=>(network==='meta'?['facebook','instagram']:['x']).includes(p.network)&&p.operatorEnabled&&p.rolloutState==='TESTING'),
     paidApiConsent:network==='x'?process.env.X_API_BUDGET_APPROVED==='true'&&policies.some(p=>p.network==='x'&&p.costApproved):null,
     canPublish:false,
@@ -110,7 +111,7 @@ export class OAuthService{
   await this.manager(userId,attempt.brandId);
   if(!attempt.stateUsedAt||!attempt.pendingCipher)throw new ConflictException('Connection authorization incomplete');
   const vault=unseal<Vault>(attempt.pendingCipher);
-  return {accounts:vault.accounts.map(a=>({id:a.id,platform:a.platform,name:a.name})),
+  return {brandId:attempt.brandId,accounts:vault.accounts.map(a=>({id:a.id,platform:a.platform,name:a.name})),
    expiresAt:attempt.expiresAt,notice:'Choose an account. No content can be published yet.'};
  }
  async choose(userId:string,sessionId:string,id:string,accountId:string,platform:'facebook'|'instagram'|'x'){
