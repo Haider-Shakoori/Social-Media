@@ -9,8 +9,9 @@ import { PlatformModule } from './platform/platform.module';
 import { ProvidersModule } from './providers/providers.module';
 import { OAuthModule } from './social-oauth/oauth.module';
 import { CreativeModule } from './creative/creative.module';
+import { StudioModule } from './studio/studio.module';
 @Module({
-  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {
