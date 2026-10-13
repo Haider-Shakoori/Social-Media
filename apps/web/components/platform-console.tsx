@@ -15,7 +15,7 @@ type Stats={tenants:number;users:number;workspaces:number;brands:number;connecti
  subscriptions:{state:string;count:number}[];posts:{state:string;count:number}[]};
 type Setting={key:string;value:unknown;updatedAt:string};
 const empty={
- type:"ARTICLE" as const,locale:"en",slug:"",title:"",description:"",category:"Guides",readingTime:"4 min",
+ type:"ARTICLE" as "ARTICLE"|"GUIDE",locale:"en",slug:"",title:"",description:"",category:"Guides",readingTime:"4 min",
  sections:[{heading:"Overview",body:""}],
 };
 const field="mt-2 w-full rounded-xl border border-white/15 bg-[#07131b] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300";
