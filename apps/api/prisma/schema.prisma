@@ -71,6 +71,7 @@ model User {
   cmsEdits CmsEntry[] @relation("CmsEditor")
   platformAuditEvents PlatformAuditEvent[]
   platformSettings PlatformSetting[]
+  providerUpdates SocialProviderPolicy[]
 
   @@map("users")
 }
@@ -498,4 +499,31 @@ model PlatformAuditEvent {
   @@index([createdAt])
   @@index([resourceType,resourceId])
   @@map("platform_audit_events")
+}
+
+
+enum ProviderRolloutState {
+  PLANNED
+  MANUAL_ONLY
+  AWAITING_APPROVAL
+  TESTING
+  PRODUCTION_READY
+  RESTRICTED
+  DISABLED
+}
+
+model SocialProviderPolicy {
+  network String @id @db.VarChar(40)
+  rolloutState ProviderRolloutState @default(PLANNED) @map("rollout_state")
+  operatorEnabled Boolean @default(false) @map("operator_enabled")
+  apiApproved Boolean @default(false) @map("api_approved")
+  costApproved Boolean @default(false) @map("cost_approved")
+  productionVerified Boolean @default(false) @map("production_verified")
+  lastVerifiedAt DateTime? @map("last_verified_at")
+  notes String @default("") @db.VarChar(500)
+  updatedById String? @map("updated_by_id") @db.Uuid
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedBy User? @relation(fields:[updatedById],references:[id],onDelete:SetNull)
+
+  @@map("social_provider_policies")
 }
