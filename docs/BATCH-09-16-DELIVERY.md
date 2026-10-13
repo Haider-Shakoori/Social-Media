@@ -25,4 +25,4 @@ All connectors remain fail-closed. The older connector-worker still rejects ever
 
 CI checks Prisma migration and schema drift, TypeScript, package tests, production builds, PostgreSQL/Redis/Mailpit HTTP E2E tests and a synthetic full content-to-approval-to-manual-due workflow. CI is not a substitute for external API acceptance, privacy/security review, load testing or actual mobile/browser accessibility QA.
 
-Review PRs for batches 09-16 in order, stacked on Batch 08. Nothing has been deployed or merged to the main branch without separate release authorization.
+Batches 01–16 were merged to main after user authorization and passing branch CI. No VPS/production deployment, API purchase or real publishing occurred. Production release still needs explicit approval and external provider validation.
