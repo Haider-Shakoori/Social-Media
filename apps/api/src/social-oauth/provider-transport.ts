@@ -76,12 +76,13 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
   const accounts:PendingAccount[]=[];
   for(const page of pages.data||[]){
    if(typeof page.id!=='string'||typeof page.access_token!=='string'||!page.access_token)continue;
-   const scopes=['pages_show_list','pages_read_engagement','pages_manage_posts'];
+   // The requested OAuth scopes are not proof of granted permissions; verify them before publishing.
+   const scopes:string[]=[];
    accounts.push({platform:'facebook',id:page.id,name:page.name||'Facebook Page',accessToken:page.access_token,scopes,expiresAt});
    if(page.instagram_business_account?.id){
     accounts.push({platform:'instagram',id:page.instagram_business_account.id,
      name:page.instagram_business_account.username||'Instagram professional account',
-     accessToken:page.access_token,scopes:[...scopes,'instagram_basic','instagram_content_publish'],expiresAt});
+     accessToken:page.access_token,scopes:[],expiresAt});
    }
   }
   if(!accounts.length)throw new BadGatewayException('No eligible Facebook Pages found');

@@ -68,6 +68,8 @@ export class OAuthService{
    const state=randomUrlToken();
    const verifier=network==='x'?randomUrlToken(48):undefined;
    const url=authorizeUrl(network,state,verifier);
+   // Opportunistically clear expired pending encrypted credentials and stale OAuth states.
+   await tx.socialOAuthAttempt.deleteMany({where:{expiresAt:{lt:new Date()}}});
    await tx.socialOAuthAttempt.create({data:{
     stateHash:tokenHash(state),brandId,sessionId,userId,network,
     verifierCipher:verifier?seal({verifier}):null,expiresAt:new Date(Date.now()+10*60*1000),
@@ -123,6 +125,10 @@ export class OAuthService{
   const account=vault.accounts.find(a=>a.id===accountId&&a.platform===platform);
   if(!account||((attempt.network==='meta')!==(platform!=='x'))){
    throw new BadRequestException('Account not present in authorized response');
+  }
+  const selectedPolicy=await this.db.socialProviderPolicy.findUnique({where:{network:platform}});
+  if(!selectedPolicy||selectedPolicy.rolloutState!=='TESTING'||!selectedPolicy.operatorEnabled){
+   throw new ServiceUnavailableException('This exact social account platform is not enabled for authorized testing');
   }
   return this.entitlement.inTransaction(tenantId,async(tx)=>{
    const count=await tx.socialOAuthAttempt.updateMany({where:{
