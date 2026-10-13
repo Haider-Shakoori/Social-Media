@@ -4,7 +4,7 @@
 - Repository: `Haider-Shakoori/Social-Media`
 - Selected stack: NestJS 12, Next.js 16, React 19, PostgreSQL 17, Prisma, Redis 8, BullMQ, pnpm, Docker Compose.
 - ONE public marketing website, ONE tenant/agency workspace, ONE protected platform-super-admin.
-- Ten target networks: Instagram, Facebook, Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile, X and Reddit.
+- **Current pilot: Facebook Pages, Instagram professional accounts and X (Twitter) only.** Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile and Reddit are postponed to later phases.
 - Commercial automatic publishing: **official, permitted APIs only**, after testing the precise platform, app, permissions, account type, formats, quotas and approved use case.
 - Every unsupported capability: honest "not available / manual export" state. Experimental session connectors are separately isolated, disabled by default, and never substitutes for authorization or paid API access.
 - Branches for batches 01-07 have code and CI checks, but PRs are not merged into `main` or deployed. GitHub PR checks do not replace production acceptance.
@@ -22,7 +22,7 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 05 | Subscription plans, trials, quotas, offline billing | Implemented on PR #5; unmerged |
 | 06 | Platform super-admin modules and website CMS | Implemented on PR #7; unmerged |
 | 07 | Ten-provider catalog, policy controls, scoped manual export and worker protection | Implemented on Batch 7 PR; unmerged |
-| 08 | Official eligible Meta Facebook Pages + Instagram professional account connector | Planned |
+| 08 | Meta (Facebook Pages/Instagram) and X OAuth pilot, encrypted credentials and permission gates; no public posting | In progress |
 | 09 | Quota-limited Cloudflare AI and deterministic branded templates | Planned |
 | 10 | Content editor, media library, campaigns and immutable versions | Planned |
 | 11 | Calendar and validated natural-language recurrence | Planned |
@@ -35,7 +35,7 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 18 | Multilingual/RTL CMS, SEO and accessibility | Planned |
 | 19 | Core-platform security, performance and **core-release** readiness | Planned |
 
-Stage A release readiness is **not** a statement that all later provider adapters are complete. Multi-provider expansion continues after the core launch. The release of any new provider is an independent gated milestone.
+Stage A release readiness is **not** a statement that all later provider adapters are complete. Multi-provider expansion is deferred until the Meta/X pilot is evaluated. The release of any new provider is an independent gated milestone.
 
 ## Stage B — Additional official-provider integrations (Batches 20–27)
 Eight independently budgeted, testable implementations; provider order below prioritizes potentially accessible APIs before explicitly cost/contract-gated networks.
@@ -48,7 +48,7 @@ Eight independently budgeted, testable implementations; provider order below pri
 | 23 | **TikTok** | Creator consent/creator_info, direct photo/video posting, privacy controls, processing/publish status | Content Posting API app, `video.publish` scope approval and audit; unaudited uploads are private; manual export |
 | 24 | **YouTube** | Channel OAuth, resumable video upload, metadata, thumbnail where permitted, visibility, processing and retry/reconcile | Appropriate Google OAuth/API verification, video quota and project audit for public uploads; manual video package |
 | 25 | **Google Business Profile** | Eligible location selection, authorized Local Posts (update/event/offer/CTA), validation and status | Approved Google Cloud project and location access; distinguish Local Posts from other social posts; manual assets |
-| 26 | **X (Twitter)** | OAuth and policy check, text/media publishing via official API if financially authorized, rate/budget guard, reconciliation | Metered API costs require **explicit operator opt-in** and hard spend limits; remain manual-only otherwise |
+| 26 | **X (Twitter) advanced** | Optional X media support, improved quota/budget tracking and analytics after the Batch 8 connection pilot | Requires separate metered API approval; defer until pilot proves useful |
 | 27 | **Reddit** | Authorized subreddit selection, rules checks, submission flow/moderation statuses if commercially approved | **Written commercial authorization/contract** and developer review before API publication; otherwise manual only |
 
 Each integration batch produces **useful offline/mock implementations even without credentials**: a provider adapter with deterministic contract tests, account/format capability UI, secure disabled-by-default feature flags, user instructions, correct export package and clear status. A mock passing CI is NOT sufficient to mark production publishing available.
