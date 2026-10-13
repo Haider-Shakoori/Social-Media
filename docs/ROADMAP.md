@@ -22,15 +22,15 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 05 | Subscription plans, trials, quotas, offline billing | Implemented on PR #5; unmerged |
 | 06 | Platform super-admin modules and website CMS | Implemented on PR #7; unmerged |
 | 07 | Ten-provider catalog, policy controls, scoped manual export and worker protection | Implemented on Batch 7 PR; unmerged |
-| 08 | Meta (Facebook Pages/Instagram) and X OAuth pilot, encrypted credentials and permission gates; no public posting | In progress |
-| 09 | Quota-limited Cloudflare AI and deterministic branded templates | Planned |
-| 10 | Content editor, media library, campaigns and immutable versions | Planned |
-| 11 | Calendar and validated natural-language recurrence | Planned |
-| 12 | Email/in-app approval, revocation, immutable audit | Planned |
-| 13 | Independent notification center with email/in-app delivery and optional approved WhatsApp Business API | Planned |
-| 14 | Durable scheduled publishing, idempotency, reconciliation | Planned |
-| 15 | Account Protection Center, pause/restriction/kill switches | Planned |
-| 16 | Evidence-based analytics limited to real API rights | Planned |
+| 08 | Meta (Facebook Pages/Instagram) and X OAuth pilot, encrypted credentials and permission gates; no public posting | Implemented on PR #9; unmerged |
+| 09 | Quota-limited Cloudflare AI and deterministic branded templates | Foundation in PR for Batch 9; launch gates pending |
+| 10 | Content editor, media library, campaigns and immutable versions | Foundation in PR for Batch 10; launch gates pending |
+| 11 | Calendar and validated natural-language recurrence | Foundation in PR for Batch 11; launch gates pending |
+| 12 | Email/in-app approval, revocation, immutable audit | Foundation in PR for Batch 12; launch gates pending |
+| 13 | Independent notification center with email/in-app delivery and optional approved WhatsApp Business API | Foundation in PR for Batch 13; launch gates pending |
+| 14 | Durable scheduled publishing, idempotency, reconciliation | Foundation in PR for Batch 14; launch gates pending |
+| 15 | Account Protection Center, pause/restriction/kill switches | Foundation in PR for Batch 15; launch gates pending |
+| 16 | Evidence-based analytics limited to real API rights | Foundation in PR for Batch 16; launch gates pending |
 | 17 | Agency collaboration, client approval roles and reporting | Planned |
 | 18 | Multilingual/RTL CMS, SEO and accessibility | Planned |
 | 19 | Core-platform security, performance and **core-release** readiness | Planned |
@@ -87,4 +87,7 @@ The core platform stays on the existing VPS. No third-party paid aggregation is 
 8. Pull request review before merge. No deployment without explicit user authorization.
 
 ## Counts
-**27 planned batches** = 19 core + 8 individual provider extensions. **7 implemented on unmerged feature PRs; 20 planned batches remain**. The future 8 providers are roadmap commitments, **not existing live integrations**.
+**27 planned batches** = 19 core + 8 individual provider extensions. **16 batch foundations committed on stacked, unmerged PRs; 11 future batches remain. Commercial deployment and external-provider publishing are NOT complete.**. The future 8 providers are roadmap commitments, **not existing live integrations**.
+
+## Accelerated batches 09-16
+See BATCH-09-16-DELIVERY.md. Batch 14 is manual due-date reconciliation only, not automatic Meta/X publishing. AI image generation, natural-language scheduling and genuine social analytics remain future release gates.
