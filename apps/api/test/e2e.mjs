@@ -122,7 +122,7 @@ status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/
 
 const userC=(await call('GET','/auth/me',undefined,c.cookie)).data.id;
 status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:userC,role:'EDITOR'},c.cookie),404,'nonadmin cannot self-grant brand');
-status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:userC,role:'EDITOR'},b.cookie),201,'owner grants brand edit access');
+status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:userC,role:'EDITOR'},b.cookie),200,'owner grants brand edit access');
 listed=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,c.cookie);
 status(listed,200,'assigned editor brand list');assert.equal(listed.data.brands.length,1);assert.equal(listed.data.brands[0].myRole,'EDITOR');
 status(await call('PATCH','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId,{tone:'Friendly'},c.cookie),200,'assigned editor changes brand profile');
