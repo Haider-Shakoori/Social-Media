@@ -86,7 +86,7 @@ export class PlatformService {
     });
   }
   async listEntries(page:number,type?:CmsEntryType,status?:CmsEntryStatus,locale?:string){
-    const take=25,skip=(page-1)*take,where={type,status,locale};
+    const take=25,skip=(page-1)*take,where={type,status,locale:"en"};
     const [total,entries]=await this.db.$transaction([
       this.db.cmsEntry.count({where}),
       this.db.cmsEntry.findMany({where,orderBy:{updatedAt:'desc'},take,skip,select:{
@@ -145,6 +145,7 @@ export class PlatformService {
     return setting?.value===true;
   }
   async publicList(type:CmsEntryType,locale:string){
+    if(locale!=='en')return {items:[]};
     if(!await this.publicEnabled())return {items:[]};
     const entries=await this.db.cmsEntry.findMany({
       where:{type,locale,status:'PUBLISHED'},select:publicSelect,orderBy:{publishedAt:'desc'},take:100,
@@ -152,6 +153,7 @@ export class PlatformService {
     return {items:entries};
   }
   async publicDetail(type:CmsEntryType,locale:string,slug:string){
+    if(locale!=='en')throw new NotFoundException('Content not published');
     if(!await this.publicEnabled())throw new NotFoundException('Content not published');
     const item=await this.db.cmsEntry.findUnique({
       where:{type_locale_slug:{type,locale,slug}},select:{...publicSelect,status:true},
