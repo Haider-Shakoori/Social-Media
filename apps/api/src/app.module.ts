@@ -12,8 +12,9 @@ import { CreativeModule } from './creative/creative.module';
 import { StudioModule } from './studio/studio.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { ApprovalModule } from './approvals/approval.module';
+import { NotificationsModule } from './notifications/notifications.module';
 @Module({
-  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {

@@ -22,6 +22,15 @@ export class ApprovalService{
    const request=await tx.approvalRequest.create({data:{postVersionId:version.id,requestedById:u,
     expiresAt:new Date(Date.now()+input.expiresHours*3600*1000)}});
    await tx.contentPost.update({where:{id:post.id},data:{state:'APPROVAL_PENDING'}});
+   const [managers,reviewers]=await Promise.all([
+     tx.membership.findMany({where:{tenantId:t,role:{in:['OWNER','ADMIN']}},select:{userId:true}}),
+     tx.brandMember.findMany({where:{brandId:b,role:'APPROVER'},select:{userId:true}}),
+   ]);
+   const recipients=[...new Set([...managers.map(x=>x.userId),...reviewers.map(x=>x.userId)])].filter(id=>id!==u);
+   if(recipients.length)await tx.socialNotification.createMany({data:recipients.map(recipientId=>({
+     tenantId:t,recipientId,eventKey:'approval:'+request.id,subject:'New content approval',
+     message:'A content draft is ready for your review in the Social-Media dashboard.',
+   })),skipDuplicates:true});
    await tx.platformAuditEvent.create({data:{actorId:u,action:'content.approval.request',
     resourceType:'content_post',resourceId:post.id,details:{brandId:b,version:version.number}}});
    return {request};
@@ -47,6 +56,10 @@ export class ApprovalService{
    const updated=await tx.contentPost.updateMany({where:{id:request.postVersion.postId,state:'APPROVAL_PENDING'},
     data:{state:input.decision==='APPROVED'?'APPROVED':'DRAFT'}});
    if(updated.count!==1)throw new ConflictException('Post no longer waiting for approval');
+   if(request.requestedById)await tx.socialNotification.create({
+     data:{tenantId:t,recipientId:request.requestedById,eventKey:'decision:'+request.id,
+       subject:'Content review '+input.decision.toLowerCase(),message:'A reviewer has decided on your content submission.'}
+   });
    await tx.platformAuditEvent.create({data:{actorId:u,action:'content.approval.'+input.decision.toLowerCase(),
     resourceType:'content_post',resourceId:request.postVersion.postId,details:{brandId:b,requestId:id}}});
    return {state:input.decision,approvedVersionId:input.decision==='APPROVED'?request.postVersionId:null};
