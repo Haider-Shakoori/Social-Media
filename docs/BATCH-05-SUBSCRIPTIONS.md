@@ -30,4 +30,4 @@ CI applies the versioned migration to PostgreSQL 17, checks schema drift, valida
 - App assumes price amounts are integers in minor units (not necessarily \`/100\` for every currency); future UI must use a currency exponent map.
 - Audit retention/export, detailed seat invite behavior, plan versioning, operator MFA/step-up auth and concurrency load testing require production hardening.
 - Browser accessibility/device QA and real SMTP configuration still required.
-- All PRs are unmerged; no VPS changes or relayWA modifications.
+- All PRs are unmerged; no VPS deployment or changes to other projects.
