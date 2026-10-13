@@ -7,6 +7,9 @@ An independent multi-tenant SaaS on the relayWA technology family: Node.js 22+, 
 2. Tenant customer dashboard for organization identity and workspace creation (content/AI/calendar features are future batches).
 3. Platform super-admin for subscription plans, tenants, AI quota and operational controls (future batches).
 
+## Planned platform coverage
+Instagram, Facebook Pages, Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile, X (Twitter) and Reddit. The **27-batch roadmap** comprises 19 core-platform batches plus 8 individually gated provider integrations. An included network is **not** a claim of live API access. See [Provider eligibility and implementation plan](docs/PLATFORM-INTEGRATION-PLAN.md).
+
 ## Connection strategy
 Our production publishing design requires verified, authorized official social APIs. Isolated unofficial connector research remains disabled by default and cannot publish through the production queue. Unsupported networks will offer manual post export/publishing.
 
@@ -14,6 +17,8 @@ Our production publishing design requires verified, authorized official social A
 - Batch 1: Monorepo, API, database/Redis groundwork, Prisma and safe connector worker — PR #1.
 - Batch 2: Responsive marketing website, pricing, guides, truthful integration pages and SEO foundations — PR #2.
 - Batch 3: Registered users, verified email, hashed password/session tokens, role-scoped tenants/workspaces, schema migrations, auth UI and live CI e2e tests — PR #3.
+- Batch 4: Multilingual brands, tenant invitations, scoped team permissions — PR #4.
+- Batch 5: Trials, quotas and manual offline billing, with no active payment gateway — PR #5.
 
 Public signup is OFF by default. No live social publishing, payment provider or production deployment has been enabled. No changes were made to relayWA.
 
@@ -25,7 +30,8 @@ Public signup is OFF by default. No live social publishing, payment provider or 
 - [Option A — official APIs](docs/prompts/OPTION_A_OFFICIAL_APIS.md)
 - [Option B — experimental connectors](docs/prompts/OPTION_B_EXPERIMENTAL_CONNECTORS.md)
 - [Architecture decisions](docs/architecture/ADR-0001-hybrid.md)
-- [Development roadmap](docs/ROADMAP.md)
+- [Development roadmap — 27 batches](docs/ROADMAP.md)
+- [Ten-platform integration strategy and API approval gates](docs/PLATFORM-INTEGRATION-PLAN.md)
 
 ## Launch security gates
 Verified email service; real external API permissions; rate/abuse controls; secure cookies and HTTPS; operator-reviewed legal notices; tenant isolation tests and backups; actual browser-based usability testing; subscription and production operations review. These are not substituted by a CI build.
