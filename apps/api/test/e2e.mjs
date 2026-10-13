@@ -528,3 +528,127 @@ try {
 
  console.log('PASS: Meta/X-only pilot, no public publishing, missing credential/budget gates and tenant boundaries.');
 }
+
+
+// Integrated Batches 9-16: no live provider calls, provider metrics or external dependencies.
+const studioDb=new PrismaClient();
+try {
+ const located=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,b.cookie);
+ status(located,200,'brand scope resolved');
+ const sample=located.data.brands.find(x=>x.name==='Brand One');
+ assert.ok(sample?.id);
+ const root='/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+sample.id;
+ const otherRoot='/tenants/'+idA+'/workspaces/'+wsA+'/brands/'+otherBrandId;
+ const input={topic:'Upcoming product release',language:'en',destination:'facebook',format:'announcement'};
+ let response=await call('POST',root+'/creative/templates',input,b.cookie);
+ status(response,201,'deterministic branded caption available without AI');
+ assert.equal(response.data.chargedCredits,0);
+ assert.equal(response.data.generatedByAI,false);
+ status(await call('POST',root+'/creative/text',input,b.cookie),503,'external AI remains disabled without explicit credentials');
+ response=await call('POST',root+'/creative/card',{headline:'A <script>safe</script> card',subtitle:'Testing',variant:'square'},b.cookie);
+ status(response,201,'branded image SVG generated in-process');
+ assert.match(response.data.svg,/&lt;script&gt;/,'SVG user text is escaped');
+ status(await call('POST',otherRoot+'/creative/templates',input,b.cookie),404,'cannot access another company creative output');
+ response=await call('POST',root+'/studio/campaigns',{name:'October pilot',description:'Private creative campaign'},b.cookie);
+ status(response,201,'campaign created');const campaignId=response.data.campaign.id;
+ response=await call('POST',root+'/studio/media',{url:'https://media.example.test/asset.jpg',
+  mimeType:'image/jpeg',altText:'Product photograph'},b.cookie);
+ status(response,201,'HTTPS media reference indexed');
+ status(await call('POST',root+'/studio/media',{url:'http://invalid.example/picture.jpg',
+  mimeType:'image/jpeg'},b.cookie),400,'insecure media URLs rejected');
+ response=await call('POST',root+'/studio/posts',{caption:'Private approved draft for testing',
+   language:'en',mediaUrls:['https://media.example.test/asset.jpg'],campaignId},b.cookie);
+ status(response,201,'private content post created');
+ const postId=response.data.post.id;
+ assert.equal(response.data.post.versions[0].number,1);
+ status(await call('POST',otherRoot+'/studio/posts',{caption:'Unauthorized',mediaUrls:[],language:'en'},b.cookie),404,'cross-tenant post creation denied');
+ response=await call('POST',root+'/studio/posts/'+postId+'/versions',{caption:'Second immutable version',
+  mediaUrls:[],language:'en',expectedVersion:1},b.cookie);
+ status(response,201,'new immutable version saved');
+ assert.equal(response.data.version.number,2);
+ status(await call('POST',root+'/studio/posts/'+postId+'/versions',{caption:'Stale concurrent editor',
+  mediaUrls:[],language:'en',expectedVersion:1},b.cookie),409,'optimistic edit version enforced');
+ response=await call('GET',root+'/studio',undefined,b.cookie);
+ status(response,200,'editor index');
+ assert.equal(response.data.posts.find(p=>p.id===postId)?.versions[0]?.number,2);
+
+ const future=new Date(Date.now()+4*3600*1000).toISOString();
+ response=await call('POST',root+'/calendar',{postId,network:'facebook',scheduledAt:future,
+  timezone:'Asia/Kabul',repeat:'once',count:1},b.cookie);
+ status(response,201,'manual calendar reminder created');const slotId=response.data.slots[0].id;
+ status(await call('POST',root+'/calendar',{postId,network:'facebook',scheduledAt:future,
+  timezone:'Not/A_Zone',repeat:'once',count:1},b.cookie),400,'timezone validated');
+ response=await call('GET',root+'/calendar',undefined,b.cookie);
+ status(response,200,'brand calendar visible');
+ assert.ok(response.data.slots.some(s=>s.id===slotId&&s.state==='PLANNED'));
+ status(await call('GET',otherRoot+'/calendar',undefined,b.cookie),404,'cross-tenant calendar hidden');
+
+ const editorId=(await call('GET','/auth/me',undefined,c.cookie)).data.id;
+ await studioDb.membership.upsert({where:{tenantId_userId:{tenantId:idB,userId:editorId}},
+  create:{tenantId:idB,userId:editorId,role:'EDITOR'},update:{role:'EDITOR'}});
+ await studioDb.brandMember.upsert({where:{brandId_userId:{brandId:sample.id,userId:editorId}},
+  create:{brandId:sample.id,userId:editorId,role:'EDITOR'},update:{role:'EDITOR'}});
+ response=await call('POST',root+'/approvals',{postId,expiresHours:48},c.cookie);
+ status(response,201,'independent editor requests review');const approvalId=response.data.request.id;
+ status(await call('POST',root+'/approvals/'+approvalId+'/decision',{
+  decision:'APPROVED',note:'Self-review attempt'},c.cookie),403,'requester cannot approve own work');
+ response=await call('POST',root+'/approvals/'+approvalId+'/decision',{
+  decision:'APPROVED',note:'Approved for manual posting'},b.cookie);
+ status(response,201,'different authorized reviewer approves version');
+ assert.equal(response.data.state,'APPROVED');
+ status(await call('POST',root+'/approvals/'+approvalId+'/decision',{
+  decision:'APPROVED',note:'Replay'},b.cookie),409,'approval replay blocked');
+
+ response=await call('GET','/notifications',undefined,b.cookie);
+ status(response,200,'operator inbox reads only own notifications');
+ assert.ok(response.data.notifications.some(x=>x.subject==='New content approval'));
+ const noteId=response.data.notifications.find(x=>x.subject==='New content approval').id;
+ status(await call('POST','/notifications/'+noteId+'/read',{},b.cookie),201,'notification marked read');
+ status(await call('POST','/notifications/'+noteId+'/email',{},b.cookie),403,'email requires explicit opt-in');
+ status(await call('PATCH','/notifications/preferences',{emailOptIn:true},b.cookie),200,'recipient can opt in');
+ status(await call('POST','/notifications/'+noteId+'/email',{},b.cookie),201,'recipient may email self via independent SMTP');
+ status(await call('POST','/notifications/'+noteId+'/email',{},b.cookie),409,'email delivery cannot be repeated');
+ status(await call('POST','/notifications/'+noteId+'/read',{},aCookie),404,'another user cannot mark message read');
+
+ response=await call('GET',root+'/protection',undefined,b.cookie);
+ status(response,200,'brand safety visible');assert.equal(response.data.brand.publishingPaused,true);
+ assert.equal(response.data.globalPaused,true);
+ assert.equal(response.data.effectiveSocialPublishingAllowed,false);
+ status(await call('POST',root+'/protection/pause',{paused:false,reason:'Controlled manual workflow'},c.cookie),403,'editor cannot unpause protected brand');
+ response=await call('POST',root+'/protection/pause',{paused:false,reason:'Controlled manual workflow'},b.cookie);
+ status(response,201,'owner clears local brand pause');assert.equal(response.data.effectiveSocialPublishingAllowed,false);
+
+ // In the isolated test process invoke the reconciliation function; API worker remains OFF in deployment.
+ const {SchedulerService}=require('../dist/scheduler/scheduler.service.js');
+ await studioDb.calendarSlot.update({where:{id:slotId},data:{scheduledAt:new Date(Date.now()-120000)}});
+ const before=process.env.MANUAL_REMINDER_SCHEDULER_ENABLED;
+ try {
+  process.env.MANUAL_REMINDER_SCHEDULER_ENABLED='true';
+  const worker=new SchedulerService(studioDb);
+  const result=await worker.runOnce();
+  assert.ok(result.processed>=1);
+  assert.equal(result.externalPostsSent,0);
+  assert.equal((await worker.runOnce()).processed,0,'second reconciliation idempotent');
+ }finally{
+  if(before===undefined)delete process.env.MANUAL_REMINDER_SCHEDULER_ENABLED;else process.env.MANUAL_REMINDER_SCHEDULER_ENABLED=before;
+ }
+ response=await call('GET',root+'/calendar',undefined,b.cookie);
+ status(response,200,'due slot remains visible with honest state');
+ assert.equal(response.data.slots.find(x=>x.id===slotId)?.state,'MANUAL_DUE');
+
+ response=await call('GET',root+'/analytics?days=30',undefined,b.cookie);
+ status(response,200,'first-party activity analytics');
+ assert.equal(response.data.source,'internal_first_party_database');
+ assert.ok(response.data.metrics.draftPostsCreated>=1);
+ assert.ok(response.data.metrics.approvalsGranted>=1);
+ assert.equal(response.data.providerReach,null);
+ assert.equal(response.data.providerEngagement,null);
+ status(await call('GET',otherRoot+'/analytics?days=30',undefined,b.cookie),404,'cross-tenant analytics denied');
+ status(await call('GET',root+'/analytics?days=999',undefined,b.cookie),400,'analytics period limited');
+
+ response=await call('POST',root+'/protection/pause',{paused:true,reason:'Security audit completed'},b.cookie);
+ status(response,201,'owner can pause brand independently');
+ console.log('PASS: integrated creative/editor/calendar/four-eyes approvals/inbox/manual due/protection/evidence analytics.');
+}finally{
+ await studioDb.$disconnect();
+}
