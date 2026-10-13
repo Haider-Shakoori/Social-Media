@@ -14,7 +14,7 @@ type BillingData={
 const format=(value:number,currency:string)=>{
   try{
     const formatter=new Intl.NumberFormat("en-US",{style:"currency",currency});
-    const digits=formatter.resolvedOptions().maximumFractionDigits;
+    const digits=formatter.resolvedOptions().maximumFractionDigits ?? 2;
     return formatter.format(value/Math.pow(10,digits));
   }catch{return currency+" "+value.toLocaleString();}
 };
