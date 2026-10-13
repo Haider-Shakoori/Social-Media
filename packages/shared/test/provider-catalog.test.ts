@@ -18,10 +18,11 @@ test('even falsely flagged production ready cannot connect or publish in Batch 7
  assert.equal(inspectProvider('reddit',{rollout:'testing',operatorEnabled:true,apiApproved:false,costApproved:false,productionVerified:false}).canPublish,false);
 });
 test('manual package never triggers network actions and rejects inappropriate formats',()=>{
- const pack=buildManualExport('youtube',{caption:'Hello world',contentType:'video',mediaUrls:['https://example.com/clip.mp4']});
+ const pack=buildManualExport('facebook',{caption:'Hello world',contentType:'video',mediaUrls:['https://example.com/clip.mp4']});
  assert.equal(pack.automaticallyPublished,false);
  assert.equal(pack.publishing,'MANUAL_ONLY');
- assert.throws(()=>buildManualExport('youtube',{caption:'x',contentType:'text',mediaUrls:[]}),/Content type/);
+ assert.throws(()=>buildManualExport('youtube',{caption:'x',contentType:'video',mediaUrls:[]}),/deferred/);
+ assert.throws(()=>buildManualExport('instagram',{caption:'x',contentType:'text',mediaUrls:[]}),/Content type/);
  assert.throws(()=>buildManualExport('x',{caption:'x',contentType:'text',mediaUrls:['http://unsafe.test/media.jpg']}),/HTTPS/);
  assert.throws(()=>buildManualExport('x',{caption:'x',contentType:'text',mediaUrls:['https://user:secret@example.com/a']}),/HTTPS/);
 });
