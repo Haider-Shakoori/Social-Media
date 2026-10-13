@@ -1,7 +1,5 @@
 import type {Metadata} from "next";
-import Link from "next/link";
-import {Suspense,useEffect,useState} from "react";
-import {useSearchParams} from "next/navigation";
+import {Suspense} from "react";
 import {PageHero} from "../../components/marketing-sections";
 import {EmailVerifier} from "../../components/email-verifier";
 export const metadata:Metadata={title:"Verify your email",robots:{index:false,follow:false}};
