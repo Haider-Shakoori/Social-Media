@@ -29,3 +29,8 @@ test('invalid provider names are not coerced into a social network',()=>{
  assert.equal(isSocialNetwork('unknown'),false);
  assert.equal(getProviderDescriptor('instagram').name,'Instagram');
 });
+
+test('disabled and restricted provider policies block manual exports',()=>{
+ assert.equal(inspectProvider('youtube',{rollout:'disabled',operatorEnabled:false,apiApproved:false,costApproved:false,productionVerified:false}).canUseManualExport,false);
+ assert.equal(inspectProvider('reddit',{rollout:'restricted',operatorEnabled:false,apiApproved:false,costApproved:false,productionVerified:false}).canUseManualExport,false);
+});

@@ -59,7 +59,7 @@ export function inspectProvider(id:SocialNetwork,policy?:ProviderPolicySnapshot)
   policy?.operatorEnabled&&policy?.apiApproved&&policy?.productionVerified&&
   (descriptor.costGate!=='operator_budget'&&descriptor.costGate!=='commercial_contract'||policy?.costApproved)
  );
- return { ...descriptor,rollout,canConnect:false,canPublish:false,canUseManualExport:true,
+ return { ...descriptor,rollout,canConnect:false,canPublish:false,canUseManualExport:rollout!=='disabled'&&rollout!=='restricted',
    productionPrerequisitesMet:isProductionReady,
    reason:rollout==='restricted'?'Provider access restricted':
      rollout==='disabled'?'Provider disabled by operator':

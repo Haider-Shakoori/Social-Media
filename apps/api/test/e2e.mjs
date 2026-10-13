@@ -426,6 +426,9 @@ try {
   assert.equal(result.data.providers.find(x=>x.id==='x').canPublish,false,'tenant still cannot publish');
   result=await call('PATCH','/platform/providers/x',{rolloutState:'MANUAL_ONLY',operatorEnabled:false,notes:'No paid API connection'},b.cookie);
   status(result,200,'operator can restore manual fallback');
+  status(await call('PATCH','/platform/providers/youtube',{rolloutState:'DISABLED',operatorEnabled:false},b.cookie),200,'operator emergency-disable');
+  status(await call('POST',base+'/manual-package',pkg,b.cookie),403,'disabled provider cannot generate manual packages');
+  status(await call('PATCH','/platform/providers/youtube',{rolloutState:'PLANNED',operatorEnabled:false},b.cookie),200,'operator restores planned manual packaging');
   result=await call('GET','/platform/operations/audit',undefined,b.cookie);
   status(result,200,'operator audit query');
   assert.ok(result.data.events.some(x=>x.action==='provider.policy.update'));

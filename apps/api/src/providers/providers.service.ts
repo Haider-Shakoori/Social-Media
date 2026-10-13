@@ -56,6 +56,10 @@ export class ProvidersService {
  async manualPackage(userId:string,tenantId:string,workspaceId:string,brandId:string,input:ExportData){
   const {role}=await this.visibleBrand(userId,tenantId,workspaceId,brandId);
   if(!['OWNER','ADMIN','EDITOR'].includes(role))throw new ForbiddenException('Editor access required');
+  const policy=await this.db.socialProviderPolicy.findUnique({where:{network:input.network},select:{rolloutState:true}});
+  if(!policy||policy.rolloutState==='DISABLED'||policy.rolloutState==='RESTRICTED'){
+   throw new ForbiddenException('Provider unavailable for manual export');
+  }
   try {
    const result=buildManualExport(input.network,{caption:input.caption,contentType:input.contentType,
     mediaUrls:input.mediaUrls,destinationNote:input.destinationNote});
