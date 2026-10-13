@@ -147,3 +147,7 @@ status(aFresh,200,'relogin owner A');
 const aCookie=aFresh.response.headers.get('set-cookie')?.split(';')[0];
 status(await call('POST','/invitations/accept',{token:revokedToken},aCookie),400,'revoked invite cannot be accepted');
 console.log('PASS: brands, agency role boundaries, invite mismatch/replay/revocation, explicit brand access and cross-tenant isolation.');
+
+status(await call('DELETE','/tenants/'+idB+'/members/'+userC,undefined,c.cookie),403,'editor cannot remove self or other members');
+status(await call('DELETE','/tenants/'+idB+'/members/'+userC,undefined,b.cookie),200,'owner removes collaborator');
+status(await call('GET','/tenants/'+idB+'/workspaces',undefined,c.cookie),404,'removed member loses workspace access immediately');

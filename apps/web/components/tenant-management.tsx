@@ -105,6 +105,9 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
    await apiCall(base+"/invitations","POST",{email:inviteEmail,role:inviteRole});
    await loadTeam();setInviteEmail("");setNotice("Invitation sent. The recipient must sign in with the exact invited email.");
  });}
+ async function removeMember(id:string){if(!window.confirm("Remove this team member and revoke their brand access?"))return;await perform(async()=>{
+   await apiCall(base+"/members/"+id,"DELETE");await loadTeam();setNotice("Team member removed.");
+ });}
  async function revokeInvite(id:string){await perform(async()=>{await apiCall(base+"/invitations/"+id,"DELETE");await loadTeam();setNotice("Invitation revoked.");});}
  async function changeMemberRole(id:string,next:string){await perform(async()=>{
    await apiCall(base+"/members/"+id,"PATCH",{role:next});await loadTeam();setNotice("Member role updated.");
@@ -180,7 +183,7 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
        {manager&&<div className="rounded-3xl border border-white/10 bg-[#102630] p-7"><h3 className="text-xl font-bold">Organization members</h3>
          <div className="mt-5 space-y-3">{members.map(m=><div key={m.userId} className="rounded-xl border border-white/10 p-3">
            <p className="font-semibold text-sm">{m.user.fullName}</p><p className="text-xs text-slate-400">{m.user.email}</p>
-           <div className="mt-2 flex items-center justify-between"><span className="text-xs text-emerald-200">{m.role}</span>{role==="OWNER"&&m.role!=="OWNER"&&<select aria-label={"Change role for "+m.user.email} value={m.role} disabled={busy} onChange={e=>void changeMemberRole(m.userId,e.target.value)} className="rounded-lg border border-white/20 bg-[#07131b] p-2 text-xs text-white"><option value="ADMIN">Admin</option><option value="EDITOR">Editor</option><option value="APPROVER">Approver</option><option value="VIEWER">Viewer</option></select>}</div>
+           <div className="mt-2 flex items-center justify-between"><span className="text-xs text-emerald-200">{m.role}</span>{role==="OWNER"&&m.role!=="OWNER"&&<select aria-label={"Change role for "+m.user.email} value={m.role} disabled={busy} onChange={e=>void changeMemberRole(m.userId,e.target.value)} className="rounded-lg border border-white/20 bg-[#07131b] p-2 text-xs text-white"><option value="ADMIN">Admin</option><option value="EDITOR">Editor</option><option value="APPROVER">Approver</option><option value="VIEWER">Viewer</option></select>}{role==="OWNER"&&m.role!=="OWNER"&&<button type="button" disabled={busy} onClick={()=>void removeMember(m.userId)} className="ml-2 text-xs font-semibold text-rose-200">Remove</button>}</div>
          </div>)}</div></div>}
        {manager&&selectedBrand&&<div className="rounded-3xl border border-white/10 bg-[#102630] p-7"><h3 className="text-xl font-bold">Brand-level access</h3><p className="mt-3 text-sm leading-7 text-slate-400">Editors, approvers and viewers must be assigned to each brand. Organization administrators automatically have access.</p>
          <form onSubmit={e=>void grant(e)} className="mt-5 space-y-3">
