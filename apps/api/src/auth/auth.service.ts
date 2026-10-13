@@ -1,5 +1,5 @@
 import {
-  ConflictException, Injectable, UnauthorizedException, BadRequestException,
+  ConflictException, Injectable, UnauthorizedException, BadRequestException, ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,6 +29,7 @@ export class AuthService {
     return new URL(value).origin;
   }
   async register(input:{email:string;password:string;fullName:string},ip:string){
+    if(process.env.REGISTRATION_ENABLED!=='true') throw new ServiceUnavailableException('Registration is not open');
     await this.limiter.check('register-ip',ip,10,3600);
     await this.limiter.check('register-email',input.email,3,3600);
     this.mail.ensureConfigured();
