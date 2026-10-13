@@ -50,7 +50,7 @@ export class BillingService {
     this.db.brand.count({where:{workspace:{tenantId},archivedAt:null}}),
     this.db.membership.count({where:{tenantId}}),
     this.db.tenantInvitation.count({where:{tenantId,acceptedAt:null,revokedAt:null,expiresAt:{gt:new Date()}}}),
-    this.db.socialConnection.count({where:{brand:{workspace:{tenantId},archivedAt:null}},state:{in:['CONNECTED','LIMITED']}}),
+    this.db.socialConnection.count({where:{brand:{workspace:{tenantId},archivedAt:null},state:{in:['CONNECTED','LIMITED']}}}),
     this.db.invoice.findMany({where:{tenantId},select:{id:true,number:true,amountMinor:true,currency:true,status:true,issuedAt:true,paidAt:true,dueAt:true},orderBy:{issuedAt:'desc'},take:30}),
     this.db.paymentRecord.findMany({where:{tenantId},select:{id:true,amountMinor:true,currency:true,reference:true,state:true,createdAt:true,verifiedAt:true,invoiceId:true},orderBy:{createdAt:'desc'},take:30}),
   ]);
