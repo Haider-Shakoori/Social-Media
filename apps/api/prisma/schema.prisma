@@ -1,0 +1,188 @@
+// Initial domain foundation; future batches add tenant authorization and workflow migrations.
+// Do not persist OAuth access tokens, cookies or passwords in plaintext.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  EDITOR
+  APPROVER
+  VIEWER
+}
+
+enum ConnectionMode {
+  OFFICIAL
+  EXPERIMENTAL
+  MANUAL
+}
+
+enum ConnectionState {
+  DISCONNECTED
+  CONNECTED
+  LIMITED
+  RESTRICTED
+}
+
+enum PostState {
+  DRAFT
+  APPROVAL_PENDING
+  APPROVED
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  UNCERTAIN
+  FAILED
+  MANUAL_REQUIRED
+  CANCELLED
+}
+
+enum ApprovalState {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+model User {
+  id          String       @id @default(uuid()) @db.Uuid
+  email       String       @unique @db.VarChar(255)
+  passwordHash String?     @map("password_hash") @db.Text
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  memberships Membership[]
+
+  @@map("users")
+}
+
+model Tenant {
+  id          String       @id @default(uuid()) @db.Uuid
+  slug        String       @unique @db.VarChar(100)
+  name        String       @db.VarChar(200)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  memberships Membership[]
+  workspaces  Workspace[]
+
+  @@map("tenants")
+}
+
+model Membership {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  tenantId  String         @map("tenant_id") @db.Uuid
+  role      MembershipRole @default(VIEWER)
+  createdAt DateTime       @default(now()) @map("created_at")
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Workspace {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(200)
+  timezone  String   @default("UTC") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brands    Brand[]
+
+  @@index([tenantId])
+  @@map("workspaces")
+}
+
+model Brand {
+  id          String             @id @default(uuid()) @db.Uuid
+  workspaceId String             @map("workspace_id") @db.Uuid
+  name        String             @db.VarChar(200)
+  locale      String             @default("en") @db.VarChar(20)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connections SocialConnection[]
+  posts       ContentPost[]
+
+  @@index([workspaceId])
+  @@map("brands")
+}
+
+model SocialConnection {
+  id                   String          @id @default(uuid()) @db.Uuid
+  brandId              String          @map("brand_id") @db.Uuid
+  platform             String          @db.VarChar(40)
+  mode                 ConnectionMode  @default(MANUAL)
+  state                ConnectionState @default(DISCONNECTED)
+  externalAccountId    String?         @map("external_account_id") @db.VarChar(255)
+  encryptedCredentials String?         @map("encrypted_credentials") @db.Text
+  createdAt            DateTime        @default(now()) @map("created_at")
+  brand                Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  targets              PostTarget[]
+
+  @@index([brandId, platform])
+  @@map("social_connections")
+}
+
+model ContentPost {
+  id        String       @id @default(uuid()) @db.Uuid
+  brandId   String       @map("brand_id") @db.Uuid
+  state     PostState    @default(DRAFT)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  brand     Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  versions  PostVersion[]
+  targets   PostTarget[]
+
+  @@index([brandId, state])
+  @@map("content_posts")
+}
+
+model PostVersion {
+  id        String            @id @default(uuid()) @db.Uuid
+  postId    String            @map("post_id") @db.Uuid
+  number    Int
+  caption   String            @db.Text
+  createdAt DateTime          @default(now()) @map("created_at")
+  post      ContentPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  approvals ApprovalRequest[]
+
+  @@unique([postId, number])
+  @@map("post_versions")
+}
+
+model PostTarget {
+  id                 String           @id @default(uuid()) @db.Uuid
+  postId             String           @map("post_id") @db.Uuid
+  socialConnectionId String           @map("social_connection_id") @db.Uuid
+  state              PostState        @default(DRAFT)
+  scheduledAt        DateTime?        @map("scheduled_at")
+  remoteId           String?          @map("remote_id") @db.VarChar(255)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  post               ContentPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialConnection   SocialConnection @relation(fields: [socialConnectionId], references: [id], onDelete: Restrict)
+
+  @@unique([postId, socialConnectionId])
+  @@index([state, scheduledAt])
+  @@map("post_targets")
+}
+
+model ApprovalRequest {
+  id             String        @id @default(uuid()) @db.Uuid
+  postVersionId  String        @map("post_version_id") @db.Uuid
+  state          ApprovalState @default(PENDING)
+  expiresAt      DateTime      @map("expires_at")
+  approvedAt     DateTime?     @map("approved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  postVersion    PostVersion   @relation(fields: [postVersionId], references: [id], onDelete: Cascade)
+
+  @@index([postVersionId, state])
+  @@map("approval_requests")
+}

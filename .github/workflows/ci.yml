@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: ['main', 'feat/**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5434/social_media?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @social/api db:validate
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
