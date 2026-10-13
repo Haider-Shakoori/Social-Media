@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState,type FormEvent} from "react";
 import {MetaXConnections} from "./meta-x-connections";
+import {StudioWorkbench} from "./studio-workbench";
 type Workspace={id:string;name:string};
 type Brand={id:string;name:string};
 type Provider={id:string;name:string;rollout:string;canConnect:boolean;canPublish:boolean;canUseManualExport:boolean;
@@ -63,6 +64,7 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
   {selected&&<p className="rounded-xl border border-white/10 p-4 text-sm leading-7 text-slate-300"><strong className="text-white">{selected.name}</strong>: {selected.accountHint}. {selected.accessRequirement}. {selected.reason}.</p>}
   {["OWNER","ADMIN"].includes(role)&&workspaceId&&brandId&&
    <MetaXConnections tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
+  {workspaceId&&brandId&&<StudioWorkbench tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
   <form onSubmit={e=>void createPackage(e)} className="grid gap-5 border-t border-white/10 pt-7 lg:grid-cols-2">
    <div className="space-y-4">
     <h3 className="text-lg font-bold">Manual export preparation</h3>
