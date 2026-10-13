@@ -406,7 +406,7 @@ try {
   assert.equal(result.data.package.automaticallyPublished,false);
   assert.equal(result.data.package.publishing,'MANUAL_ONLY');
   status(await call('POST',base+'/manual-package',pkg,aCookie),404,'cross-tenant manual package rejected');
-  status(await call('POST',base+'/manual-package',{...pkg,contentType:'text'},b.cookie),400,'unsupported planned format rejected');
+  status(await call('POST',base+'/manual-package',{...pkg,contentType:'pin'},b.cookie),400,'unsupported planned format rejected');
   status(await call('POST',base+'/manual-package',{...pkg,mediaUrls:['http://unsafe.example/image.jpg']},b.cookie),400,'non-HTTPS media rejected');
   status(await call('POST',base+'/manual-package',{...pkg,network:'unlisted_social_network'},b.cookie),400,'unknown provider rejected');
 
