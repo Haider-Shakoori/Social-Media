@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit, ServiceUnavailableException, TooManyRequestsException } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, ServiceUnavailableException, HttpException, HttpStatus } from '@nestjs/common';
 import Redis from 'ioredis';
 import { hashToken } from './crypto';
 @Injectable()
@@ -17,9 +17,9 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
       const scoped = 'social:auth:limit:' + action + ':' + hashToken(key);
       const count = await this.client.incr(scoped);
       if(count===1) await this.client.expire(scoped,seconds);
-      if(count>allowed) throw new TooManyRequestsException('Too many requests; try again later');
+      if(count>allowed) throw new HttpException('Too many requests; try again later',HttpStatus.TOO_MANY_REQUESTS);
     } catch(error) {
-      if(error instanceof TooManyRequestsException) throw error;
+      if(error instanceof HttpException && error.getStatus()===HttpStatus.TOO_MANY_REQUESTS) throw error;
       throw new ServiceUnavailableException('Authentication protections temporarily unavailable');
     }
   }

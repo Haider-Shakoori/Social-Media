@@ -23,7 +23,7 @@ async function mailboxToken(address,subjectPrefix,kind){
       if(!(item.To||[]).some(to=>to.Address?.toLowerCase()===address.toLowerCase()))continue;
       const message=await fetch(mailpit+'/api/v1/message/'+encodeURIComponent(item.ID)).then(r=>r.json());
       const raw=[message.Text,message.HTML,message.Subject].filter(Boolean).join('\n');
-      const match=raw.match(new RegExp(kind+'\\\\?token=([A-Za-z0-9_-]{40,80})'));
+      const match=raw.match(new RegExp(kind+'\\?token=([A-Za-z0-9_-]{40,80})'));
       if(match)return match[1];
     }
     await new Promise(r=>setTimeout(r,300));
