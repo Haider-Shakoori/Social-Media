@@ -133,6 +133,7 @@ model Brand {
   posts       ContentPost[]
   campaigns   ContentCampaign[]
   mediaAssets MediaAsset[]
+  calendarSlots CalendarSlot[]
   members     BrandMember[]
   oauthAttempts SocialOAuthAttempt[]
   industry    String?  @db.VarChar(120)
@@ -182,6 +183,7 @@ model ContentPost {
   brand     Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
   versions  PostVersion[]
   targets   PostTarget[]
+  calendarSlots CalendarSlot[]
 
   @@index([brandId, state])
   @@map("content_posts")
@@ -587,4 +589,27 @@ model MediaAsset {
  brand Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
  @@index([brandId])
  @@map("media_assets")
+}
+
+enum CalendarSlotState {
+  PLANNED
+  MANUAL_DUE
+  CANCELLED
+}
+model CalendarSlot {
+ id String @id @default(uuid()) @db.Uuid
+ brandId String @map("brand_id") @db.Uuid
+ postId String @map("post_id") @db.Uuid
+ scheduledAt DateTime @map("scheduled_at")
+ timezone String @db.VarChar(100)
+ network String @db.VarChar(30)
+ state CalendarSlotState @default(PLANNED)
+ seriesId String? @map("series_id") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at")
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+ brand Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
+ post ContentPost @relation(fields:[postId],references:[id],onDelete:Cascade)
+ @@index([brandId,scheduledAt])
+ @@index([state,scheduledAt])
+ @@map("calendar_slots")
 }
