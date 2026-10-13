@@ -4,6 +4,7 @@ import Link from "next/link";
 import {TenantManagement} from "./tenant-management";
 import {TenantBilling} from "./tenant-billing";
 import {TenantConnectors} from "./tenant-connectors";
+import {NotificationInbox} from "./notification-inbox";
 const api=process.env.NEXT_PUBLIC_API_BASE_URL||"http://localhost:4000/api/v1";
 type User={id:string;email:string;fullName:string;emailVerified:boolean};
 type Tenant={id:string;slug:string;name:string;role:string};
@@ -69,6 +70,6 @@ export function TenantDashboard(){
        <button disabled={busy} type="submit" className="rounded-xl bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">Create workspace</button></form>}
      </section>
    </div>
-   {selected&&<><TenantConnectors tenantId={selected.id} workspaces={workspaces} role={selected.role}/><TenantBilling tenantId={selected.id} role={selected.role}/><TenantManagement key={selected.id} tenantId={selected.id} role={selected.role}/></>}
+   {selected&&<><NotificationInbox/><TenantConnectors tenantId={selected.id} workspaces={workspaces} role={selected.role}/><TenantBilling tenantId={selected.id} role={selected.role}/><TenantManagement key={selected.id} tenantId={selected.id} role={selected.role}/></>}
  </div>;
 }
