@@ -1,4 +1,8 @@
-export type SocialNetwork = 'instagram' | 'facebook' | 'linkedin' | 'tiktok' | 'x' | 'reddit';
+export const SOCIAL_NETWORKS = [
+ 'instagram','facebook','threads','pinterest','linkedin','tiktok','youtube',
+ 'google_business_profile','x','reddit',
+] as const;
+export type SocialNetwork = typeof SOCIAL_NETWORKS[number];
 export type ConnectorMode = 'official' | 'experimental' | 'manual';
 export type PolicyStatus = 'approved' | 'review_required' | 'prohibited';
 export type ConnectionStatus = 'connected' | 'disconnected' | 'limited' | 'restricted';
@@ -21,3 +25,4 @@ export function canQueueProductionPublishing(input: PublishingEligibility): bool
     input.supportsPublishing;
 }
 export * from './connectors';
+export * from './provider-catalog';
