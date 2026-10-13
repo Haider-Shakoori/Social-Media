@@ -149,6 +149,8 @@ model Brand {
   languages    String[] @default(["en"])
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
   archivedAt   DateTime? @map("archived_at")
+  publishingPaused Boolean @default(true) @map("publishing_paused")
+  pauseReason String @default("Safety default: review required") @map("pause_reason") @db.VarChar(300)
 
   @@index([workspaceId])
   @@map("brands")
@@ -165,6 +167,7 @@ model SocialConnection {
   externalAccountName  String?         @map("external_account_name") @db.VarChar(255)
   tokenExpiresAt DateTime? @map("token_expires_at")
   tokenScopes String[] @default([]) @map("token_scopes")
+  pausedAt DateTime? @map("paused_at")
   connectedAt DateTime? @map("connected_at")
   createdAt            DateTime        @default(now()) @map("created_at")
   brand                Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
