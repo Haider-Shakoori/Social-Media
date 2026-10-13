@@ -41,3 +41,6 @@ Public signup is OFF by default. No live social publishing, payment provider or 
 
 ## Launch security gates
 Verified email service; real external API permissions; rate/abuse controls; secure cookies and HTTPS; operator-reviewed legal notices; tenant isolation tests and backups; actual browser-based usability testing; subscription and production operations review. These are not substituted by a CI build.
+
+## Accelerated Batches 09-16
+AI creative templates, versioned brand content, manual calendar reminders, human approvals, independent notifications, due reconciliation, account protection and evidence-only analytics are implemented in stacked review branches. These are NOT live provider publishing integrations. See [limitations and QA](docs/BATCH-09-16-DELIVERY.md).
