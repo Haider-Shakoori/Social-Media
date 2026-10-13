@@ -57,6 +57,7 @@ model User {
   passwordHash String?     @map("password_hash") @db.Text
   fullName     String       @default("") @map("full_name") @db.VarChar(150)
   emailVerifiedAt DateTime? @map("email_verified_at")
+  isPlatformAdmin Boolean @default(false) @map("is_platform_admin")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
   memberships Membership[]
@@ -64,6 +65,8 @@ model User {
   emailTokens EmailToken[]
   sentInvitations TenantInvitation[] @relation("SentInvitations")
   brandAccess BrandMember[]
+  adminPayments PaymentRecord[] @relation("PaymentsRecorded")
+  auditEvents BillingAuditEvent[]
 
   @@map("users")
 }
@@ -77,6 +80,11 @@ model Tenant {
   memberships Membership[]
   workspaces  Workspace[]
   invitations TenantInvitation[]
+  subscription Subscription?
+  invoices Invoice[]
+  payments PaymentRecord[]
+  usageBuckets UsageBucket[]
+  billingAudits BillingAuditEvent[]
 
   @@map("tenants")
 }
@@ -271,4 +279,156 @@ model BrandMember {
   @@unique([brandId,userId])
   @@index([userId])
   @@map("brand_members")
+}
+
+
+enum SubscriptionState {
+  TRIALING
+  ACTIVE
+  GRACE
+  SUSPENDED
+  CANCELLED
+  EXPIRED
+}
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+enum PaymentState {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+enum InvoiceState {
+  ISSUED
+  PAID
+  VOID
+}
+enum UsageMetric {
+  AI_TEXT
+  AI_IMAGE
+  SCHEDULED_POST
+}
+
+model Plan {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(60)
+  name String @db.VarChar(100)
+  description String @default("") @db.VarChar(500)
+  currency String @default("USD") @db.Char(3)
+  monthlyPriceMinor Int?
+  yearlyPriceMinor Int?
+  trialDays Int @default(14)
+  maxBrands Int @default(1)
+  maxSeats Int @default(2)
+  maxConnections Int @default(1)
+  monthlyAiText Int @default(25)
+  monthlyAiImage Int @default(5)
+  monthlyScheduledPosts Int @default(20)
+  enabled Boolean @default(false)
+  published Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  subscriptions Subscription[]
+  invoices Invoice[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @unique @map("tenant_id") @db.Uuid
+  planId String @map("plan_id") @db.Uuid
+  state SubscriptionState @default(TRIALING)
+  cycle BillingCycle @default(MONTHLY)
+  periodStart DateTime @map("period_start")
+  periodEnd DateTime @map("period_end")
+  trialEndsAt DateTime? @map("trial_ends_at")
+  graceEndsAt DateTime? @map("grace_ends_at")
+  suspendedAt DateTime? @map("suspended_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  maxBrands Int
+  maxSeats Int
+  maxConnections Int
+  monthlyAiText Int
+  monthlyAiImage Int
+  monthlyScheduledPosts Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  plan Plan @relation(fields:[planId],references:[id],onDelete:Restrict)
+  payments PaymentRecord[]
+
+  @@index([state,periodEnd])
+  @@map("subscriptions")
+}
+
+model UsageBucket {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  metric UsageMetric
+  monthStart DateTime @map("month_start")
+  used Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+
+  @@unique([tenantId,metric,monthStart])
+  @@index([tenantId,monthStart])
+  @@map("usage_buckets")
+}
+
+model Invoice {
+  id String @id @default(uuid()) @db.Uuid
+  number String @unique @db.VarChar(60)
+  tenantId String @map("tenant_id") @db.Uuid
+  planId String? @map("plan_id") @db.Uuid
+  amountMinor Int
+  currency String @db.Char(3)
+  status InvoiceState @default(ISSUED)
+  issuedAt DateTime @default(now()) @map("issued_at")
+  dueAt DateTime? @map("due_at")
+  paidAt DateTime? @map("paid_at")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  plan Plan? @relation(fields:[planId],references:[id],onDelete:SetNull)
+  payments PaymentRecord[]
+
+  @@index([tenantId,issuedAt])
+  @@map("invoices")
+}
+
+model PaymentRecord {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  subscriptionId String? @map("subscription_id") @db.Uuid
+  invoiceId String? @map("invoice_id") @db.Uuid
+  createdById String @map("created_by_id") @db.Uuid
+  amountMinor Int
+  currency String @db.Char(3)
+  reference String @db.VarChar(120)
+  note String @default("") @db.VarChar(500)
+  state PaymentState @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at")
+  verifiedAt DateTime? @map("verified_at")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  subscription Subscription? @relation(fields:[subscriptionId],references:[id],onDelete:SetNull)
+  invoice Invoice? @relation(fields:[invoiceId],references:[id],onDelete:SetNull)
+  createdBy User @relation("PaymentsRecorded",fields:[createdById],references:[id],onDelete:Restrict)
+
+  @@unique([tenantId,reference])
+  @@index([tenantId,createdAt])
+  @@map("payment_records")
+}
+
+model BillingAuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String? @map("tenant_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  action String @db.VarChar(80)
+  details Json
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant Tenant? @relation(fields:[tenantId],references:[id],onDelete:SetNull)
+  actor User @relation(fields:[actorId],references:[id],onDelete:Restrict)
+
+  @@index([tenantId,createdAt])
+  @@map("billing_audit_events")
 }

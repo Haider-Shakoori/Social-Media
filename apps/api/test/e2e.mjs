@@ -151,3 +151,105 @@ console.log('PASS: brands, agency role boundaries, invite mismatch/replay/revoca
 status(await call('DELETE','/tenants/'+idB+'/members/'+userC,undefined,c.cookie),403,'editor cannot remove self or other members');
 status(await call('DELETE','/tenants/'+idB+'/members/'+userC,undefined,b.cookie),200,'owner removes collaborator');
 status(await call('GET','/tenants/'+idB+'/workspaces',undefined,c.cookie),404,'removed member loses workspace access immediately');
+
+
+// Batch 5: quotas, trial expiry, privileged subscriptions and offline payment audit.
+const {createRequire}=await import('node:module');
+const require=createRequire(import.meta.url);
+const {PrismaClient}=require('@prisma/client');
+const {EntitlementsService}=require('../dist/billing/entitlements.service.js');
+const billingDb=new PrismaClient();
+try {
+  let response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  status(response,200,'tenant owner sees own trial subscription');
+  assert.equal(response.data.subscription.state,'TRIALING');
+  assert.equal(response.data.subscription.limits.maxBrands,2);
+  status(await call('GET','/billing/tenants/'+idB,undefined,aCookie),404,'other tenant cannot access billing');
+  response=await call('GET','/billing/plans');
+  status(response,200,'public plan list');assert.equal(response.data.plans.length,0,'no paid plans published initially');
+  status(await call('GET','/platform/billing/plans',undefined,b.cookie),403,'ordinary tenant owner is not platform admin');
+  status(await call('POST','/platform/billing/tenants/'+idB+'/suspend',{},b.cookie),403,'tenant cannot self-activate/suspend');
+
+  const brandBase='/tenants/'+idB+'/workspaces/'+wsB+'/brands';
+  status(await call('POST',brandBase,{name:'Brand One',locale:'en'},b.cookie),201,'first subscription brand');
+  status(await call('POST',brandBase,{name:'Brand Two',locale:'ps'},b.cookie),201,'second subscription brand');
+  status(await call('POST',brandBase,{name:'Third Should Fail',locale:'en'},b.cookie),403,'third brand over quota');
+  status(await call('POST','/tenants/'+idB+'/invitations',{email:c.email,role:'EDITOR'},b.cookie),201,'seat reservation one');
+  status(await call('POST','/tenants/'+idB+'/invitations',{email:d.email,role:'VIEWER'},b.cookie),201,'seat reservation two');
+  const fifth=await createVerified('fifth');
+  status(await call('POST','/tenants/'+idB+'/invitations',{email:fifth.email,role:'VIEWER'},b.cookie),403,'pending invitations enforce seat limit');
+
+  const quota=new EntitlementsService(billingDb);
+  const results=await Promise.allSettled([quota.consume(idB,'AI_TEXT',20),quota.consume(idB,'AI_TEXT',20)]);
+  assert.equal(results.filter(x=>x.status==='fulfilled').length,1,'concurrent AI calls must not overspend');
+  assert.equal(results.filter(x=>x.status==='rejected').length,1,'one concurrent request must fail');
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.usage.aiText,20,'usage stored in current UTC month');
+
+  await billingDb.subscription.update({where:{tenantId:idB},data:{
+    periodEnd:new Date(Date.now()-86400000),trialEndsAt:new Date(Date.now()-86400000),
+  }});
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.subscription.state,'EXPIRED','status evaluated dynamically, not via cron');
+  status(await call('POST',brandBase,{name:'Expired Trial Brand',locale:'en'},b.cookie),403,'expired trial denies brand creation');
+  const waitingToken=await mailboxToken(c.email,'Invitation to','invite/accept');
+  status(await call('POST','/invitations/accept',{token:waitingToken},c.cookie),403,'expired subscription blocks pending invite acceptance');
+  await assert.rejects(quota.consume(idB,'AI_TEXT',1),'expired trial denies credits');
+
+  const platformId=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
+  await billingDb.user.update({where:{id:platformId},data:{isPlatformAdmin:true}});
+  status(await call('GET','/platform/billing/plans',undefined,b.cookie),200,'explicitly designated admin can see plan registry');
+  response=await call('POST','/platform/billing/tenants/'+idB+'/trial/extend',{days:7},b.cookie);
+  status(response,201,'admin extends expired trial');assert.equal(response.data.state,'TRIALING');
+
+  response=await call('PATCH','/platform/billing/plans/growth',{
+    enabled:true,published:true,monthlyPriceMinor:2500,yearlyPriceMinor:25000,
+  },b.cookie);
+  status(response,200,'admin can configure private growth plan');
+  response=await call('GET','/billing/plans');
+  status(response,200,'published plans available');assert.equal(response.data.plans.length,1);
+  response=await call('POST','/platform/billing/tenants/'+idB+'/activate',{
+    planCode:'growth',cycle:'MONTHLY',
+  },b.cookie);
+  status(response,201,'platform-only manual activation');
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.subscription.state,'ACTIVE');
+  assert.equal(response.data.subscription.limits.maxBrands,6);
+  status(await call('PATCH','/platform/billing/plans/growth',{maxBrands:7},b.cookie),200,'operator edits plan definition');
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.subscription.limits.maxBrands,6,'existing subscription keeps snapshot');
+
+  response=await call('POST','/platform/billing/invoices',{
+    tenantId:idB,planCode:'growth',amountMinor:2500,currency:'USD',
+  },b.cookie);
+  status(response,201,'operator issues manual invoice');const invoiceId=response.data.invoice.id;
+  status(await call('POST','/platform/billing/payments',{invoiceId,reference:'CASH-'+stamp,note:'Cash received test'},aCookie),403,'non-admin cannot record payment');
+  response=await call('POST','/platform/billing/payments',{invoiceId,reference:'CASH-'+stamp,note:'Cash received test'},b.cookie);
+  status(response,201,'admin records pending payment');const paymentId=response.data.payment.id;
+  assert.equal(response.data.payment.state,'PENDING');
+  const administratorDetails=await call('GET','/platform/billing/tenants/'+idB,undefined,b.cookie);
+  status(administratorDetails,200,'admin can reload persisted pending payment records');
+  assert.equal(administratorDetails.data.payments.find(p=>p.id===paymentId)?.state,'PENDING');
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.invoices[0].status,'ISSUED','recording does not mark paid');
+  response=await call('POST','/platform/billing/payments/'+paymentId+'/decision',{decision:'VERIFY'},b.cookie);
+  status(response,201,'operator verifies payment');assert.equal(response.data.payment.state,'VERIFIED');
+  status(await call('POST','/platform/billing/payments/'+paymentId+'/decision',{decision:'VERIFY'},b.cookie),409,'verification replay is rejected');
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.invoices[0].status,'PAID');
+  assert.equal(response.data.payments[0].state,'VERIFIED');
+
+  status(await call('POST','/platform/billing/tenants/'+idB+'/suspend',{},b.cookie),201,'platform suspends subscription');
+  status(await call('POST',brandBase,{name:'Suspended Brand',locale:'en'},b.cookie),403,'suspension blocks brand creation');
+  status(await call('POST','/platform/billing/tenants/'+idB+'/resume',{},b.cookie),201,'resume remaining paid period');
+  status(await call('POST','/platform/billing/tenants/'+idB+'/grace',{days:3},b.cookie),201,'operator grants grace');
+  response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
+  assert.equal(response.data.subscription.state,'GRACE');
+  const logs=await billingDb.billingAuditEvent.count({where:{tenantId:idB}});
+  assert.ok(logs>=6,'admin actions must be audit-logged');
+  status(await call('GET','/platform/billing/tenants/'+idB,undefined,aCookie),403,'no cross-role platform access');
+  console.log('PASS: trial lifecycle, quota serialization, expiry, platform controls, invoices, manual payments, audit records.');
+} finally {
+  await billingDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
+  await billingDb.$disconnect();
+}

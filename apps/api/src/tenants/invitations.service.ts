@@ -4,6 +4,7 @@ import { AccessService } from './access.service';
 import { MailService } from '../security/mail.service';
 import { RateLimiterService } from '../security/rate-limiter.service';
 import { createToken, hashToken } from '../security/crypto';
+import { EntitlementsService } from '../billing/entitlements.service';
 
 type Role='ADMIN'|'EDITOR'|'APPROVER'|'VIEWER';
 @Injectable()
@@ -13,6 +14,7 @@ export class InvitationsService {
     private readonly access:AccessService,
     private readonly mail:MailService,
     private readonly limiter:RateLimiterService,
+    private readonly quotas:EntitlementsService,
   ) {}
   private get webOrigin():string{return new URL(process.env.WEB_BASE_URL||'http://localhost:3000').origin;}
   async create(userId:string,tenantId:string,email:string,role:Role) {
@@ -29,11 +31,16 @@ export class InvitationsService {
     }
     const token=createToken();
     const tenant=await this.db.tenant.findUniqueOrThrow({where:{id:tenantId},select:{name:true}});
-    const invite=await this.db.tenantInvitation.upsert({
-      where:{tenantId_email:{tenantId,email}},
-      create:{tenantId,email,role,invitedById:userId,tokenHash:hashToken(token),expiresAt:new Date(Date.now()+72*3600000)},
-      update:{role,invitedById:userId,tokenHash:hashToken(token),expiresAt:new Date(Date.now()+72*3600000),acceptedAt:null,revokedAt:null},
-      select:{id:true,email:true,role:true,expiresAt:true},
+    const invite=await this.quotas.inTransaction(tenantId,async(tx,s)=>{
+      const current=await tx.tenantInvitation.findUnique({where:{tenantId_email:{tenantId,email}}});
+      const replacingPending=!!current&&!current.revokedAt&&!current.acceptedAt&&current.expiresAt>new Date();
+      await this.quotas.assertCount(tx,s,'SEATS',replacingPending?0:1);
+      return tx.tenantInvitation.upsert({
+        where:{tenantId_email:{tenantId,email}},
+        create:{tenantId,email,role,invitedById:userId,tokenHash:hashToken(token),expiresAt:new Date(Date.now()+72*3600000)},
+        update:{role,invitedById:userId,tokenHash:hashToken(token),expiresAt:new Date(Date.now()+72*3600000),acceptedAt:null,revokedAt:null},
+        select:{id:true,email:true,role:true,expiresAt:true},
+      });
     });
     const url=this.webOrigin+'/invite/accept?token='+encodeURIComponent(token);
     await this.mail.send(email,'Invitation to '+tenant.name,url);
@@ -60,7 +67,10 @@ export class InvitationsService {
     await this.limiter.check('accept-user',userId,15,3600);
     const hashed=hashToken(token);
     const now=new Date();
-    return this.db.$transaction(async tx=>{
+    const lookup=await this.db.tenantInvitation.findUnique({where:{tokenHash:hashed},select:{tenantId:true}});
+    if(!lookup)throw new BadRequestException('Invitation invalid or expired');
+    return this.quotas.inTransaction(lookup.tenantId,async(tx,s)=>{
+      await this.quotas.assertCount(tx,s,'SEATS',0);
       // Existing logged-in identity is the only possible recipient. The token alone
       // does not grant access to a different email address.
       const user=await tx.user.findUniqueOrThrow({where:{id:userId},select:{email:true,emailVerifiedAt:true}});
