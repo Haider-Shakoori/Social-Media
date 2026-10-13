@@ -11,7 +11,6 @@ export interface PublishingEligibility {
   accountPaused: boolean;
   supportsPublishing: boolean;
 }
-/** Defense-in-depth guard: no unofficial automatic publishing for paying customers. */
 export function canQueueProductionPublishing(input: PublishingEligibility): boolean {
   return input.mode === 'official' &&
     input.policyStatus === 'approved' &&
@@ -21,3 +20,4 @@ export function canQueueProductionPublishing(input: PublishingEligibility): bool
     !input.accountPaused &&
     input.supportsPublishing;
 }
+export * from './connectors';

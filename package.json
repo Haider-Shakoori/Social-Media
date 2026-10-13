@@ -1,14 +1,14 @@
 {
   "name": "social-media-saas",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "packageManager": "pnpm@12.9.1",
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "pnpm --parallel --filter @social/web --filter @social/api dev",
-    "build": "pnpm -r --if-present build",
-    "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "build": "pnpm --filter @social/shared build && pnpm -r --if-present build",
+    "typecheck": "pnpm --filter @social/shared build && pnpm -r --if-present typecheck",
+    "test": "pnpm --filter @social/shared build && pnpm -r --if-present test",
     "ci": "pnpm typecheck && pnpm test && pnpm build"
   }
 }
