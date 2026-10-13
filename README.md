@@ -5,7 +5,7 @@ An independent multi-tenant SaaS on the relayWA technology family: Node.js 22+, 
 ## Product
 1. Public marketing website with planned social network integrations and content guides.
 2. Tenant customer dashboard for organization identity and workspace creation (content/AI/calendar features are future batches).
-3. Platform super-admin for subscription plans, tenants, AI quota and operational controls (future batches).
+3. Platform super-admin for subscription plans, tenant/user visibility, audited operational settings, and gated article/guide/custom-page CMS (Batch 6 branch).
 
 ## Planned platform coverage
 Instagram, Facebook Pages, Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile, X (Twitter) and Reddit. The **27-batch roadmap** comprises 19 core-platform batches plus 8 individually gated provider integrations. An included network is **not** a claim of live API access. See [Provider eligibility and implementation plan](docs/PLATFORM-INTEGRATION-PLAN.md).
@@ -19,6 +19,7 @@ Our production publishing design requires verified, authorized official social A
 - Batch 3: Registered users, verified email, hashed password/session tokens, role-scoped tenants/workspaces, schema migrations, auth UI and live CI e2e tests — PR #3.
 - Batch 4: Multilingual brands, tenant invitations, scoped team permissions — PR #4.
 - Batch 5: Trials, quotas and manual offline billing, with no active payment gateway — PR #5.
+- Batch 6: Protected platform console and publication-gated CMS for articles, guides and custom website pages — PR #7 (stacked after roadmap PR #6).
 
 Public signup is OFF by default. No live social publishing, payment provider or production deployment has been enabled. No changes were made to relayWA.
 
@@ -26,6 +27,7 @@ Public signup is OFF by default. No live social publishing, payment provider or 
 - [Local setup and beta flags](docs/SETUP.md)
 - [Batch 2 marketing site](docs/BATCH-02-PUBLIC-SITE.md)
 - [Batch 3 identity and security](docs/BATCH-03-IDENTITY.md)
+- [Batch 6 platform super-admin and CMS](docs/BATCH-06-PLATFORM-CMS.md)
 - [Primary hybrid master prompt](docs/prompts/MASTER_HYBRID_IMPLEMENTATION.md)
 - [Option A — official APIs](docs/prompts/OPTION_A_OFFICIAL_APIS.md)
 - [Option B — experimental connectors](docs/prompts/OPTION_B_EXPERIMENTAL_CONNECTORS.md)
