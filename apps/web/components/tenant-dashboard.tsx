@@ -69,6 +69,6 @@ export function TenantDashboard(){
        <button disabled={busy} type="submit" className="rounded-xl bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">Create workspace</button></form>}
      </section>
    </div>
-   {selected&&<><TenantConnectors tenantId={selected.id} workspaces={workspaces}/><TenantBilling tenantId={selected.id} role={selected.role}/><TenantManagement key={selected.id} tenantId={selected.id} role={selected.role}/></>}
+   {selected&&<><TenantConnectors tenantId={selected.id} workspaces={workspaces} role={selected.role}/><TenantBilling tenantId={selected.id} role={selected.role}/><TenantManagement key={selected.id} tenantId={selected.id} role={selected.role}/></>}
  </div>;
 }
