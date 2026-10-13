@@ -5,7 +5,7 @@ import { platformPlans } from "../../lib/site";
 
 export const metadata: Metadata = {
   title: "Social network integrations",
-  description: "See planned official integrations and realistic connection availability for Instagram, Facebook, LinkedIn, TikTok, X and Reddit.",
+  description: "Explore planned coverage for ten platforms: Instagram, Facebook, Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile, X and Reddit. Availability depends on permissions.",
   alternates: {canonical:"/integrations"},
 };
 const styles: Record<string,string> = {
