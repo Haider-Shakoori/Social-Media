@@ -1,5 +1,6 @@
 import type {MetadataRoute} from "next";
 import {site} from "../lib/site";
+import {LOCALES} from "../lib/i18n";
 import {marketingPages,solutions} from "../lib/marketing-pages";
 import {articles,guides} from "../lib/resources";
 import {getCmsResources} from "../lib/cms";
@@ -8,7 +9,7 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  const [cmsArticles,cmsGuides,cmsPages]=await Promise.all([
   getCmsResources("ARTICLE"),getCmsResources("GUIDE"),getCmsResources("PAGE"),
  ]);
- const paths=["","integrations","pricing","faq","contact","blog","docs","status","changelog",
+ const paths=[...LOCALES.map(x=>"l/"+x),"","integrations","pricing","faq","contact","blog","docs","status","changelog",
   ...Object.keys(marketingPages),...Object.keys(solutions).map(s=>"solutions/"+s),
   ...articles.map(x=>"blog/"+x.slug),...guides.map(x=>"docs/"+x.slug),
   ...cmsArticles.map(x=>"blog/"+x.slug),...cmsGuides.map(x=>"docs/"+x.slug),...cmsPages.map(x=>x.slug),
