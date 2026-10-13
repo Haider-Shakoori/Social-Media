@@ -24,8 +24,10 @@ export class RequestSecurityMiddleware implements NestMiddleware {
     // Origin check is a CSRF defense-in-depth measure alongside SameSite cookies.
     validateRequestOrigin(req.method, req.header('origin'), allowed);
     if (unsafe.has(req.method)) {
-      const type = req.header('content-type') || '';
-      if (!type.toLowerCase().startsWith('application/json')) {
+      const hasBody=Boolean(req.header('transfer-encoding')) || Number(req.header('content-length')||'0')>0;
+      const type=req.header('content-type')||'';
+      // Bodyless DELETE requests are valid; JSON is required for non-empty bodies.
+      if (hasBody && !type.toLowerCase().startsWith('application/json')) {
         throw new BadRequestException('JSON requests required');
       }
     }
