@@ -1,5 +1,4 @@
 import Link from "next/link";
-import {LOCALES} from "../lib/i18n";
 import { primaryNavigation } from "../lib/site";
 
 export function SiteHeader() {
