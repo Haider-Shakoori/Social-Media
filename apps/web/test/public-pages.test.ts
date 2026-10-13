@@ -18,7 +18,8 @@ function routeExists(href:string):boolean{
  return false;
 }
 test("footer and navigation destinations resolve",()=>{
- for(const {href} of [...primaryNavigation,...footerGroups.flatMap(x=>x.links)]){
+ const hrefs:string[]=[...primaryNavigation.map(x=>x.href),...footerGroups.flatMap(group=>group.links.map(link=>link.href))];
+ for(const href of hrefs){
    assert.equal(routeExists(href),true,"Missing route: "+href);
  }
 });
@@ -28,5 +29,5 @@ test("slugs remain unique",()=>{
 });
 test("integration claims disclose planned availability",()=>{
  assert.ok(faqItems.length>=6);assert.ok(plans.length>=3);assert.ok(platformPlans.length>=6);
- assert.ok(platformPlans.every(x=>x.status!=="Production ready"));
+ assert.ok(platformPlans.every(x=>(["Planned","Review required","Manual fallback"] as string[]).includes(x.status)));
 });
