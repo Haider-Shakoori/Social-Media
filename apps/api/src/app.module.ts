@@ -17,8 +17,9 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { ProtectionModule } from './protection/protection.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AgencyModule } from './agency/agency.module';
+import { LaunchModule } from './readiness/launch.module';
 @Module({
-  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule,SchedulerModule,ProtectionModule,AnalyticsModule,AgencyModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule,SchedulerModule,ProtectionModule,AnalyticsModule,AgencyModule,LaunchModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {
