@@ -1,5 +1,6 @@
 "use client";
 import {FormEvent,useEffect,useState} from "react";
+import {PlatformPlanEditor} from "./platform-plan-editor";
 const api=process.env.NEXT_PUBLIC_API_BASE_URL||"http://localhost:4000/api/v1";
 type Tenant={id:string;name:string;slug:string;subscription:{state:string;periodEnd:string;plan:{code:string;name:string}}|null};
 type Plan={id:string;code:string;name:string;enabled:boolean;published:boolean;currency:string;monthlyPriceMinor:number|null;yearlyPriceMinor:number|null;maxBrands:number;maxSeats:number};
@@ -104,5 +105,6 @@ export function PlatformBillingPanel(){
   </section>
  </div>
  <section className="mt-8 rounded-3xl border border-white/10 bg-[#102630] p-7"><h2 className="text-xl font-bold">Plan catalog</h2><p className="mt-2 text-sm text-slate-400">Price/limit configuration is currently available through protected platform API endpoints. Existing tenants retain subscription quota snapshots when plan definitions change.</p><div className="mt-5 grid gap-3 md:grid-cols-3">{plans.map(p=><article key={p.id} className="rounded-xl border border-white/10 p-5"><h3 className="font-bold">{p.name}</h3><p className="mt-2 text-xs text-slate-400">{p.code} · {p.enabled?"Enabled":"Disabled"} · {p.published?"Public":"Private"}</p><p className="mt-4 text-sm text-emerald-200">Brands {p.maxBrands} · Seats {p.maxSeats}</p></article>)}</div></section>
+ <PlatformPlanEditor onSaved={()=>void refresh().catch(e=>setError(e instanceof Error?e.message:"Refresh failed"))}/>
  </div>;
 }
