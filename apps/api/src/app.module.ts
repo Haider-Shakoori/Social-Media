@@ -11,8 +11,9 @@ import { OAuthModule } from './social-oauth/oauth.module';
 import { CreativeModule } from './creative/creative.module';
 import { StudioModule } from './studio/studio.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { ApprovalModule } from './approvals/approval.module';
 @Module({
-  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {
