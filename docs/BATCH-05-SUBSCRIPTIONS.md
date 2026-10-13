@@ -7,7 +7,7 @@
 - Starter / Growth / Agency example plans are **disabled, private and unpriced** until a platform administrator configures them. Nothing is automatically billed.
 - Read-only tenant subscription/usage/invoice/payment overview for OWNER/ADMIN; other tenants and roles cannot read private billing.
 - Platform administration requires a separate \`is_platform_admin\` flag (never assigned by any public endpoint). New installations have **zero platform admins**. Provision a trusted operator manually in a secure database procedure after verifying identity, e.g. using a dedicated administrative runbook; don't include this operation in anonymous startup scripts.
-- Platform-only plan create/edit, subscription activation/renewal, trial extension, grace/suspend/resume, manual invoice issuance, payment recording and verification/rejection.
+- Platform-only plan create/edit (including an interactive plan editor), subscription activation/renewal, trial extension, grace/suspend/resume, manual invoice issuance, payment recording and verification/rejection. Previously recorded pending payments remain available for review after page reload.
 - Plan entitlements are snapshotted at activation, preventing unannounced retroactive quota changes.
 - Counting and updates are serialized by a row-level tenant subscription lock, and Prisma serializable transactions retry transient conflicts.
 - Existing brand creation and team invitation operations **actually enforce** brand and seat quotas; pending invitations reserve seats.
@@ -24,6 +24,7 @@ CI applies the versioned migration to PostgreSQL 17, checks schema drift, valida
 
 ## Known limitations / follow-up
 - Tenant usage display uses counters plus direct resource counts; connection creation and future AI/publishing flows must hook into these checks before launch.
+- Invitation acceptance is also blocked when the organization's subscription is expired or suspended.
 - No invoice PDFs, billing tax engine, automatic charges, payment gateway, refunds, proration or self-service paid checkout.
 - Operators must verify manual payments offline and handle accounting/currency settlement carefully.
 - App assumes price amounts are integers in minor units (not necessarily \`/100\` for every currency); future UI must use a currency exponent map.
