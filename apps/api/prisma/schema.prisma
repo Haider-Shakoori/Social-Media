@@ -591,7 +591,11 @@ model MediaAsset {
  @@map("media_assets")
 }
 
-enum CalendarSlotState { PLANNED MANUAL_DUE CANCELLED }
+enum CalendarSlotState {
+  PLANNED
+  MANUAL_DUE
+  CANCELLED
+}
 model CalendarSlot {
  id String @id @default(uuid()) @db.Uuid
  brandId String @map("brand_id") @db.Uuid
