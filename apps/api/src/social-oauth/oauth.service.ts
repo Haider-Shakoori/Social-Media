@@ -18,7 +18,8 @@ export class OAuthService{
   if(!brand||brand.archivedAt)throw new NotFoundException('Brand unavailable');
   const member=await this.db.membership.findUnique({where:{tenantId_userId:{tenantId:brand.workspace.tenantId,userId}},
    select:{role:true}});
-  if(!member||!['OWNER','ADMIN'].includes(member.role))throw new ForbiddenException('Organization manager access required');
+  if(!member)throw new NotFoundException('Brand unavailable');
+  if(!['OWNER','ADMIN'].includes(member.role))throw new ForbiddenException('Organization manager access required');
   return {brand,tenantId:brand.workspace.tenantId};
  }
  private async activePolicy(network:ConnectNetwork){
