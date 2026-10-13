@@ -328,7 +328,7 @@ model Plan {
   enabled Boolean @default(false)
   published Boolean @default(false)
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   subscriptions Subscription[]
   invoices Invoice[]
 
@@ -354,7 +354,7 @@ model Subscription {
   monthlyAiImage Int
   monthlyScheduledPosts Int
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
   plan Plan @relation(fields:[planId],references:[id],onDelete:Restrict)
   payments PaymentRecord[]
@@ -369,7 +369,7 @@ model UsageBucket {
   metric UsageMetric
   monthStart DateTime @map("month_start")
   used Int @default(0)
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
 
   @@unique([tenantId,metric,monthStart])
