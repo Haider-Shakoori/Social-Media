@@ -1,6 +1,6 @@
 # Social-Media — AI Social Media Management SaaS
 
-An independent multi-tenant SaaS on the relayWA technology family: Node.js 22+, NestJS 12, Next.js 16/React 19, PostgreSQL 17, Prisma ORM, Redis 8, Tailwind 4, pnpm and Docker Compose.
+An independent multi-tenant SaaS using its own services and infrastructure: Node.js 22+, NestJS 12, Next.js 16/React 19, PostgreSQL 17, Prisma ORM, Redis 8, Tailwind 4, pnpm and Docker Compose.
 
 ## Product
 1. Public marketing website with planned social network integrations and content guides.
@@ -21,7 +21,7 @@ Our production publishing design requires verified, authorized official social A
 - Batch 5: Trials, quotas and manual offline billing, with no active payment gateway — PR #5.
 - Batch 6: Protected platform console and publication-gated CMS for articles, guides and custom website pages — PR #7 (stacked after roadmap PR #6).
 
-Public signup is OFF by default. No live social publishing, payment provider or production deployment has been enabled. No changes were made to relayWA.
+Public signup is OFF by default. No live social publishing, payment provider or production deployment has been enabled. No other projects or services were modified.
 
 ## Documentation
 - [Local setup and beta flags](docs/SETUP.md)

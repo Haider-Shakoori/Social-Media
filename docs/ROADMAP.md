@@ -27,7 +27,7 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 10 | Content editor, media library, campaigns and immutable versions | Planned |
 | 11 | Calendar and validated natural-language recurrence | Planned |
 | 12 | Email/in-app approval, revocation, immutable audit | Planned |
-| 13 | Optional relayWA WhatsApp notification/approval fallback | Planned |
+| 13 | Independent notification center with email/in-app delivery and optional approved WhatsApp Business API | Planned |
 | 14 | Durable scheduled publishing, idempotency, reconciliation | Planned |
 | 15 | Account Protection Center, pause/restriction/kill switches | Planned |
 | 16 | Evidence-based analytics limited to real API rights | Planned |
@@ -84,7 +84,7 @@ The core platform stays on the existing VPS. No third-party paid aggregation is 
 5. No publishing action when an authorization, provider review, quota, terms, media validation or budget check fails.
 6. Document verified provider access, actual costs, errors, manual fallback, operational kill switch and rollback.
 7. Do not promote `production_ready` based on tests or mocked provider responses alone.
-8. Pull request review before merge. No VPS/relayWA changes without explicit user authorization.
+8. Pull request review before merge. No deployment without explicit user authorization.
 
 ## Counts
 **27 planned batches** = 19 core + 8 individual provider extensions. **5 implemented on unmerged feature PRs; 22 planned batches remain**. The future 8 providers are roadmap commitments, **not existing live integrations**.

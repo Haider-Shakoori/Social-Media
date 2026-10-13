@@ -16,7 +16,7 @@ Node.js 22+, pnpm 12.9.1, NestJS 12, Next.js 16, PostgreSQL 17, Redis 8, Prisma 
 10. Run pnpm typecheck, pnpm test and pnpm build. GitHub CI also runs migration deploy/drift checks and real integration tests with Postgres/Redis/Mailpit.
 
 ## Important environment settings
-- DATABASE_URL: dedicated PostgreSQL database, not relayWA's.
+- DATABASE_URL: dedicated PostgreSQL database, dedicated to this application, never shared with other systems.
 - REDIS_URL: dedicated Redis endpoint/namespace (separate Redis service in production).
 - CORS_ORIGIN: exact allowed web origins; never '*'.
 - WEB_BASE_URL: exact frontend origin, used in verification/reset emails.
@@ -27,7 +27,7 @@ Node.js 22+, pnpm 12.9.1, NestJS 12, Next.js 16, PostgreSQL 17, Redis 8, Prisma 
 - PUBLIC_INDEXING_ENABLED: disabled before public launch.
 
 ## Security and deployment
-Do not deploy dev Compose directly or expose its database, Redis or Mailpit UI to the internet. Configure a trusted HTTPS reverse proxy, correct cookie site/domain behavior, secure SMTP sender, protections against abuse, log retention, backups and legal review before public signup. The app intentionally has no active social publishing; connector-worker rejects publish operations. Do not merge/deploy or change relayWA without explicit authorization.
+Do not deploy dev Compose directly or expose its database, Redis or Mailpit UI to the internet. Configure a trusted HTTPS reverse proxy, correct cookie site/domain behavior, secure SMTP sender, protections against abuse, log retention, backups and legal review before public signup. The app intentionally has no active social publishing; connector-worker rejects publish operations. Do not merge or deploy without explicit authorization.
 
 ## PR dependencies
 Merge Batch 1 PR #1, then Batch 2 PR #2, then Batch 3 PR #3 after review and green GitHub CI.
