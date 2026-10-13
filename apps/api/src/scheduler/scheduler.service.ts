@@ -34,7 +34,7 @@ export class SchedulerService implements OnModuleInit,OnModuleDestroy{
      tenantId:brand.workspace.tenantId,recipientId:m.userId,eventKey:'manual_due:'+slot.id,
      subject:action,message:'A '+slot.network+' calendar item is due. Open the dashboard and publish manually only if approved.',
     })),skipDuplicates:true});
-    if(post?.state==='APPROVED'&&!brand.publishingPaused){
+    if(post?.state==='APPROVED'){
      await tx.contentPost.updateMany({where:{id:slot.postId,state:'APPROVED'},data:{state:'MANUAL_REQUIRED'}});
     }
     return true;
