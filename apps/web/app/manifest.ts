@@ -1,0 +1,1 @@
+import type {MetadataRoute} from "next";export default function manifest():MetadataRoute.Manifest{return {name:"Social-Media",short_name:"Social-Media",description:"Approval-first social content workflow preview",start_url:"/",display:"browser",background_color:"#07131b",theme_color:"#07131b"};}
