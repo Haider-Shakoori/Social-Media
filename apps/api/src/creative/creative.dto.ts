@@ -1,7 +1,7 @@
 import {z} from 'zod';
 export const creativeInput=z.strictObject({
   topic:z.string().trim().min(5).max(500),
-  language:z.enum(['en','fa-AF','ps','ar']).default('en'),
+  language:z.literal('en').default('en'),
   destination:z.enum(['facebook','instagram','x']),
   format:z.enum(['announcement','educational','promotion','question']).default('announcement'),
 });

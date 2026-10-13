@@ -25,7 +25,7 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
  const [posts,setPosts]=useState<Post[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([]);
  const [slots,setSlots]=useState<Slot[]>([]),[approvals,setApprovals]=useState<Approval[]>([]);
  const [analytics,setAnalytics]=useState<Metrics|null>(null),[protection,setProtection]=useState<Protection|null>(null);
- const [caption,setCaption]=useState(""),[topic,setTopic]=useState(""),[format,setFormat]=useState("announcement"),[language,setLanguage]=useState("en"),[network,setNetwork]=useState("facebook");
+ const [caption,setCaption]=useState(""),[topic,setTopic]=useState(""),[format,setFormat]=useState("announcement"),[network,setNetwork]=useState("facebook");
  const [headline,setHeadline]=useState(""),[subtitle,setSubtitle]=useState(""),[media,setMedia]=useState(""),[campaign,setCampaign]=useState("");
  const [postId,setPostId]=useState(""),[scheduled,setScheduled]=useState(""),[timezone,setTimezone]=useState("Asia/Kabul"),[repeat,setRepeat]=useState("once"),[count,setCount]=useState(1);
  const [reason,setReason]=useState("Manually reviewing account safety");
@@ -51,7 +51,7 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
  async function previewAI(mode:"templates"|"text"){
   await run(async()=>{
    if(!topic.trim())throw new Error("Enter a topic");
-   const data=await req<{caption:string;chargedCredits:number;mode:string}>(root+"/creative/"+mode,"POST",{topic,language,destination:network,format});
+   const data=await req<{caption:string;chargedCredits:number;mode:string}>(root+"/creative/"+mode,"POST",{topic,language:"en",destination:network,format});
    setCaption(data.caption);setNotice(mode==="templates"?"A deterministic branded draft was prepared without AI charges.":"AI text returned. Credits charged: "+data.chargedCredits+". Review it before use.");
   });
  }
@@ -66,7 +66,7 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
  async function createPost(e:FormEvent){
   e.preventDefault();await run(async()=>{
    const urls=media.split("\n").map(x=>x.trim()).filter(Boolean);
-   const result=await req<{post:Post}>(root+"/studio/posts","POST",{caption,language,mediaUrls:urls,...(campaign?{campaignId:campaign}:{})});
+   const result=await req<{post:Post}>(root+"/studio/posts","POST",{caption,language:"en",mediaUrls:urls,...(campaign?{campaignId:campaign}:{})});
    setNotice("Draft "+result.post.id+" created; nothing was published.");setCaption("");setMedia("");await refresh();
   });
  }
@@ -75,7 +75,7 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
   const next=window.prompt("Updated caption (will revoke existing approval)",latest?.caption||"");
   if(next===null)return;
   await run(async()=>{
-   await req(root+"/studio/posts/"+post.id+"/versions","POST",{caption:next,mediaUrls:latest.mediaUrls,language:latest.language,expectedVersion:latest.number});
+   await req(root+"/studio/posts/"+post.id+"/versions","POST",{caption:next,mediaUrls:latest.mediaUrls,language:"en",expectedVersion:latest.number});
    setNotice("New immutable version saved; reapproval required.");await refresh();
   });
  }
@@ -121,7 +121,7 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
     <label className="block text-xs text-slate-300">Topic<input className={input} value={topic} onChange={e=>setTopic(e.target.value)} maxLength={500}/></label>
     <div className="grid grid-cols-3 gap-3">
      <label className="text-xs text-slate-300">Network<select className={input} value={network} onChange={e=>setNetwork(e.target.value)}><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="x">X</option></select></label>
-     <label className="text-xs text-slate-300">Language<select className={input} value={language} onChange={e=>setLanguage(e.target.value)}><option value="en">English</option><option value="fa-AF">Dari</option><option value="ps">Pashto</option><option value="ar">Arabic</option></select></label>
+     
      <label className="text-xs text-slate-300">Format<select className={input} value={format} onChange={e=>setFormat(e.target.value)}><option value="announcement">News</option><option value="educational">Education</option><option value="promotion">Promotion</option><option value="question">Question</option></select></label>
     </div>
     <div className="flex flex-wrap gap-3"><button disabled={busy} type="button" className={primary} onClick={()=>void previewAI("templates")}>Branded template · free</button>
