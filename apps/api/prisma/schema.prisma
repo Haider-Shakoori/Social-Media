@@ -94,6 +94,7 @@ model Tenant {
   usageBuckets UsageBucket[]
   billingAudits BillingAuditEvent[]
   notifications SocialNotification[]
+  xBudgetPolicy XBudgetPolicy?
 
   @@map("tenants")
 }
@@ -640,4 +641,17 @@ model SocialNotification {
  @@unique([recipientId,eventKey])
  @@index([recipientId,readAt,createdAt])
  @@map("social_notifications")
+}
+
+
+model XBudgetPolicy {
+ id String @id @default(uuid()) @db.Uuid
+ tenantId String @unique @map("tenant_id") @db.Uuid
+ monthlyCeilingMinor Int @default(0) @map("monthly_ceiling_minor")
+ operatorApproved Boolean @default(false) @map("operator_approved")
+ paidCallsEnabled Boolean @default(false) @map("paid_calls_enabled")
+ lastReviewedAt DateTime? @map("last_reviewed_at")
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+ tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+ @@map("x_budget_policies")
 }
