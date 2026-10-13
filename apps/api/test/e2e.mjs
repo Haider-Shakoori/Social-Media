@@ -367,3 +367,74 @@ try{
   await opsDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
   await opsDb.$disconnect();
 }
+
+
+// Batch 7: 10-provider catalog, operator policy, manual export, cross-tenant safety.
+const providerDb=new PrismaClient();
+try {
+  let result=await call('GET','/tenants/'+idB+'/providers',undefined,b.cookie);
+  status(result,200,'tenant member sees catalog');
+  assert.equal(result.data.providers.length,10,'ten networks must be in the catalog');
+  assert.ok(result.data.providers.every(p=>p.canPublish===false&&p.canConnect===false));
+  assert.ok(result.data.providers.some(p=>p.id==='x'&&p.rollout==='manual_only'));
+  assert.ok(result.data.providers.some(p=>p.id==='google_business_profile'));
+  status(await call('GET','/tenants/'+idB+'/providers',undefined,aCookie),404,'another tenant cannot enumerate provider settings');
+  status(await call('GET','/tenants/'+idB+'/providers'),401,'unauthenticated provider access prohibited');
+  status(await call('GET','/platform/providers',undefined,b.cookie),403,'tenant owner is not platform admin');
+
+  const fullBrands=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,b.cookie);
+  status(fullBrands,200,'tenant owner can list brands for manual export');
+  const brand=fullBrands.data.brands.find(x=>x.name==='Brand One');
+  assert.ok(brand?.id,'a valid brand from Batch 5 must remain');
+  const base='/tenants/'+idB+'/providers/workspaces/'+wsB+'/brands/'+brand.id;
+  result=await call('GET',base,undefined,b.cookie);
+  status(result,200,'authorized brand provider matrix');
+  assert.equal(result.data.brand.id,brand.id);
+  assert.ok(!JSON.stringify(result.data).includes('encryptedCredentials'),'connection tokens never exposed');
+  status(await call('GET',base,undefined,aCookie),404,'cross-tenant brand provider access denied');
+  status(await call('GET',base,undefined,c.cookie),404,'removed member cannot view a brand catalog');
+
+  const pkg={
+    network:'youtube',contentType:'video',caption:'  Independent publishing demo  ',
+    mediaUrls:['https://example.com/assets/video.mp4'],destinationNote:'Check channel settings manually'
+  };
+  result=await call('POST',base+'/manual-package',pkg,b.cookie);
+  status(result,201,'authorized tenant owner builds manual package');
+  assert.equal(result.data.package.network,'youtube');
+  assert.equal(result.data.package.caption,'Independent publishing demo');
+  assert.equal(result.data.package.automaticallyPublished,false);
+  assert.equal(result.data.package.publishing,'MANUAL_ONLY');
+  status(await call('POST',base+'/manual-package',pkg,aCookie),404,'cross-tenant manual package rejected');
+  status(await call('POST',base+'/manual-package',{...pkg,contentType:'text'},b.cookie),400,'unsupported planned format rejected');
+  status(await call('POST',base+'/manual-package',{...pkg,mediaUrls:['http://unsafe.example/image.jpg']},b.cookie),400,'non-HTTPS media rejected');
+  status(await call('POST',base+'/manual-package',{...pkg,network:'unlisted_social_network'},b.cookie),400,'unknown provider rejected');
+
+  const adminId=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
+  await providerDb.user.update({where:{id:adminId},data:{isPlatformAdmin:true}});
+  result=await call('GET','/platform/providers',undefined,b.cookie);
+  status(result,200,'operator sees policy registry');
+  assert.equal(result.data.providers.length,10);
+  assert.equal(result.data.providers.find(p=>p.id==='reddit')?.costGate,'commercial_contract');
+  status(await call('PATCH','/platform/providers/x',{rolloutState:'PRODUCTION_READY',operatorEnabled:true},b.cookie),400,'cannot self-certify production release');
+  status(await call('PATCH','/platform/providers/x',{rolloutState:'TESTING',apiApproved:true},b.cookie),400,'cannot forge API review');
+  status(await call('PATCH','/platform/providers/x',{rolloutState:'MANUAL_ONLY',operatorEnabled:true},b.cookie),400,'manual-only provider cannot be enabled');
+  status(await call('PATCH','/platform/providers/x',{rolloutState:'TESTING',operatorEnabled:false,notes:'Blocked until budget approval'},b.cookie),200,'operator can document testing');
+  result=await call('PATCH','/platform/providers/x',{rolloutState:'TESTING',operatorEnabled:true},b.cookie);
+  status(result,200,'operator can enable catalog testing only');
+  assert.equal(result.data.provider.canPublish,false,'testing never grants production publishing');
+  result=await call('GET','/tenants/'+idB+'/providers',undefined,b.cookie);
+  assert.equal(result.data.providers.find(x=>x.id==='x').canPublish,false,'tenant still cannot publish');
+  result=await call('PATCH','/platform/providers/x',{rolloutState:'MANUAL_ONLY',operatorEnabled:false,notes:'No paid API connection'},b.cookie);
+  status(result,200,'operator can restore manual fallback');
+  result=await call('GET','/platform/operations/audit',undefined,b.cookie);
+  status(result,200,'operator audit query');
+  assert.ok(result.data.events.some(x=>x.action==='provider.policy.update'));
+  status(await call('PATCH','/platform/providers/reddit',{rolloutState:'DISABLED'},aCookie),403,'non-platform user cannot change provider status');
+  const count=await providerDb.socialProviderPolicy.count();
+  assert.equal(count,10,'seeded policy records');
+  assert.equal(await providerDb.socialConnection.count(),0,'no simulated live sessions created');
+  console.log('PASS: provider policies, manual export, non-admin denial, tenant isolation, blocked live publishing.');
+}finally{
+  await providerDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
+  await providerDb.$disconnect();
+}
