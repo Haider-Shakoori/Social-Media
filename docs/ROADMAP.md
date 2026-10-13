@@ -18,7 +18,7 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 01 | Repository bootstrap, docs, health API, infrastructure, CI | Merged PR #1 |
 | 02 | Reusable design system and public marketing site | Merged PR #2 |
 | 03 | Authentication, tenant schema, authorization, isolation tests | Merged PR #3 |
-| 04 | Workspaces, teams, multilingual brand profiles and onboarding | Merged PR #4 |
+| 04 | Workspaces, teams, English-first brand profiles and onboarding | Merged PR #4 |
 | 05 | Subscription plans, trials, quotas, offline billing | Merged PR #5 |
 | 06 | Platform super-admin modules and website CMS | Merged PR #7 |
 | 07 | Ten-provider catalog, policy controls, scoped manual export and worker protection | Merged PR #8 |
@@ -32,7 +32,7 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 15 | Account Protection Center, pause/restriction/kill switches | Merged foundation PR #16; launch gates pending |
 | 16 | Evidence-based analytics limited to real API rights | Merged foundation PR #17; launch gates pending |
 | 17 | Agency collaboration, client approval roles and reporting | Planned |
-| 18 | Multilingual/RTL CMS, SEO and accessibility | Planned |
+| 18 | English-only SEO, accessibility and future translation deferral | Planned |
 | 19 | Core-platform security, performance and **core-release** readiness | Planned |
 
 Stage A release readiness is **not** a statement that all later provider adapters are complete. Multi-provider expansion is deferred until the Meta/X pilot is evaluated. The release of any new provider is an independent gated milestone.
@@ -91,3 +91,6 @@ The core platform stays on the existing VPS. No third-party paid aggregation is 
 
 ## Accelerated batches 09-16
 See BATCH-09-16-DELIVERY.md. Batch 14 is manual due-date reconciliation only, not automatic Meta/X publishing. AI image generation, natural-language scheduling and genuine social analytics remain future release gates.
+
+## Language scope — English only
+The global-market pilot ships entirely in English. Non-English UI routes, selectors and new brand/content/CMS language selections are disabled. Future translation, RTL and language expansion are postponed pending product-market validation. Existing data is preserved and no localization migration or automatic translation is performed.
