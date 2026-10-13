@@ -138,6 +138,7 @@ model Brand {
   campaigns   ContentCampaign[]
   mediaAssets MediaAsset[]
   calendarSlots CalendarSlot[]
+  dispatchRehearsals DispatchRehearsal[]
   members     BrandMember[]
   oauthAttempts SocialOAuthAttempt[]
   industry    String?  @db.VarChar(120)
@@ -191,6 +192,7 @@ model ContentPost {
   versions  PostVersion[]
   targets   PostTarget[]
   calendarSlots CalendarSlot[]
+  dispatchRehearsals DispatchRehearsal[]
 
   @@index([brandId, state])
   @@map("content_posts")
@@ -654,4 +656,22 @@ model XBudgetPolicy {
  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
  @@map("x_budget_policies")
+}
+
+
+model DispatchRehearsal {
+ id String @id @default(uuid()) @db.Uuid
+ brandId String @map("brand_id") @db.Uuid
+ postId String @map("post_id") @db.Uuid
+ network String @db.VarChar(20)
+ requestKey String @map("request_key") @db.VarChar(90)
+ versionId String @map("version_id") @db.Uuid
+ results Json
+ attemptedById String @map("attempted_by_id") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at")
+ brand Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
+ post ContentPost @relation(fields:[postId],references:[id],onDelete:Cascade)
+ @@unique([brandId,requestKey])
+ @@index([brandId,createdAt])
+ @@map("dispatch_rehearsals")
 }
