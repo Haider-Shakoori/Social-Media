@@ -35,14 +35,14 @@ export const articles: readonly Resource[] = [
     ],
   },
   {
-    slug: "planning-multilingual-social-content",
-    title: "Designing multilingual social posts without broken typography",
+    slug: "designing-english-social-content",
+    title: "Designing readable English social content with branded visuals",
     description: "A repeatable approach for combining AI draft text with accurate branded image templates.",
     category: "Creative operations",
     readingTime: "3 min read",
     sections: [
-      { heading: "Review the language", body: "AI output in English, Dari, Pashto, and Arabic must be checked by a knowledgeable reviewer, especially for cultural events, prices, names, and quotations." },
-      { heading: "Generate backgrounds separately", body: "Image models can struggle with multilingual lettering. Create or select the visual background first, then render approved text through a deterministic font and layout engine." },
+      { heading: "Review the language", body: "English AI drafts need human verification for factual claims, names, prices, brand tone and quotations." },
+      { heading: "Generate backgrounds separately", body: "Image models can struggle with overlaid lettering and precise spelling. Create or select the visual background first, then render approved text through a deterministic font and layout engine." },
       { heading: "Build reusable templates", body: "Save logo safe zones, typography, color palettes, image sizes, and contrast standards as brand templates. This improves consistency and reduces unnecessary AI inference." },
     ],
   },
@@ -57,7 +57,7 @@ export const guides: readonly Resource[] = [
     readingTime: "3 min",
     sections: [
       { heading: "1. Create a workspace", body: "When registration opens, an organization will create a tenant workspace and invite team members with limited roles." },
-      { heading: "2. Configure a brand", body: "Enter your industry, timezone, audience, approved languages, preferred themes, logo and other reusable assets." },
+      { heading: "2. Configure a brand", body: "Enter your industry, timezone, audience, English content style, preferred themes, logo and other reusable assets." },
       { heading: "3. Check connection eligibility", body: "Select a network and follow its authorized connection process when available. Manual publishing will remain an option for unsupported networks." },
       { heading: "4. Plan and approve", body: "Create a content rule, generate a draft, assign an approver, and inspect the scheduled outcome." },
     ],

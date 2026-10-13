@@ -544,6 +544,7 @@ try {
  let response=await call('POST',root+'/creative/templates',input,b.cookie);
  status(response,201,'deterministic branded caption available without AI');
  assert.equal(response.data.chargedCredits,0);
+ status(await call('POST',root+'/creative/templates',{...input,language:'fa-AF'},b.cookie),400,'non-English AI generation input blocked');
  assert.equal(response.data.generatedByAI,false);
  status(await call('POST',root+'/creative/text',input,b.cookie),503,'external AI remains disabled without explicit credentials');
  response=await call('POST',root+'/creative/card',{headline:'A <script>safe</script> card',subtitle:'Testing',variant:'square'},b.cookie);
@@ -560,6 +561,7 @@ try {
  response=await call('POST',root+'/studio/posts',{caption:'Private approved draft for testing',
    language:'en',mediaUrls:['https://media.example.test/asset.jpg'],campaignId},b.cookie);
  status(response,201,'private content post created');
+ status(await call('POST',root+'/studio/posts',{caption:'Non English language setting',language:'ps',mediaUrls:[]},b.cookie),400,'non-English draft option blocked');
  const postId=response.data.post.id;
  assert.equal(response.data.post.versions[0].number,1);
  status(await call('POST',otherRoot+'/studio/posts',{caption:'Unauthorized',mediaUrls:[],language:'en'},b.cookie),404,'cross-tenant post creation denied');
