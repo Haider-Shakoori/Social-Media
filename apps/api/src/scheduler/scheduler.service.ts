@@ -23,12 +23,11 @@ export class SchedulerService implements OnModuleInit,OnModuleDestroy{
     const changed=await tx.calendarSlot.updateMany({where:{id:slot.id,state:'PLANNED',scheduledAt:{lte:new Date()}},
      data:{state:'MANUAL_DUE'}});
     if(!changed.count)return false;
-    const brand=await tx.brand.findUnique({where:{id:slot.brandId},select:{archivedAt:true,workspace:{select:{tenantId:true}},
-     publishingPaused:true}});
+    const brand=await tx.brand.findUnique({where:{id:slot.brandId},select:{archivedAt:true,workspace:{select:{tenantId:true}}}});
     if(!brand||brand.archivedAt)return true;
     const post=await tx.contentPost.findUnique({where:{id:slot.postId},select:{state:true}});
     // Even when approved, no API call occurs: the notification requests human posting.
-    const action=post?.state==='APPROVED'&&!brand.publishingPaused?'Ready for manual publishing':'Requires manual review';
+    const action=post?.state==='APPROVED'?'Ready for manual publishing':'Requires manual review';
     const members=await tx.membership.findMany({where:{tenantId:brand.workspace.tenantId,role:{in:['OWNER','ADMIN']}},
      select:{userId:true}});
     if(members.length)await tx.socialNotification.createMany({data:members.map(m=>({
