@@ -33,7 +33,7 @@ export class EntitlementsService{
    const current=await tx.membership.count({where:{tenantId:s.tenantId}});
    const pending=await tx.tenantInvitation.count({where:{tenantId:s.tenantId,acceptedAt:null,revokedAt:null,expiresAt:{gt:new Date()}}});
    used=current+pending;
-  }else used=await tx.socialConnection.count({where:{brand:{workspace:{tenantId:s.tenantId},archivedAt:null}},state:{in:['CONNECTED','LIMITED']}}});
+  } else used=await tx.socialConnection.count({where:{brand:{workspace:{tenantId:s.tenantId},archivedAt:null},state:{in:['CONNECTED','LIMITED']}}});
   if(used+additional>s[limits[metric]])throw new ForbiddenException(metric.toLowerCase()+' limit reached');
  }
  async consume(tenantId:string,metric:CreditMetric,quantity=1){
