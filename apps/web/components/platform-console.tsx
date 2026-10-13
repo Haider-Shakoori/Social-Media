@@ -144,7 +144,7 @@ export function PlatformConsole(){
     <div className="mt-5 space-y-2">{cms.map(x=><button type="button" key={x.id} onClick={()=>choose(x)}
      className={"block w-full rounded-xl border p-4 text-left "+(entry?.id===x.id?"border-emerald-300/40 bg-emerald-300/10":"border-white/10")}>
      <span className="text-xs text-emerald-300">{x.type} · {x.locale} · {x.status} · v{x.revision}</span>
-     <span className="mt-2 block font-semibold">{x.title}</span><span className="mt-1 block text-xs text-slate-400">/{x.type==="ARTICLE"?"blog":x.type==="GUIDE"?"docs":""}/{x.slug}</span>
+     <span className="mt-2 block font-semibold">{x.title}</span><span className="mt-1 block text-xs text-slate-400">{x.type==="ARTICLE"?"/blog/":x.type==="GUIDE"?"/docs/":"/"}{x.slug}</span>
     </button>)}</div>
     <PageControls page={page} total={total} pageSize={25} update={setPage}/>
    </div>

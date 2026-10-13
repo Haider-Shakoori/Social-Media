@@ -340,9 +340,23 @@ try{
   const guideId=response.data.entry.id;
   response=await call('POST',base+'/'+guideId+'/publish',{expectedRevision:1},b.cookie);
   status(response,201,'publish guide');
+
+  // Standalone CMS website pages cannot take over login/legal/system routes.
+  const badPage={...valid,type:'PAGE',slug:'login',title:'Unsafe route override attempt'};
+  status(await call('POST',base,badPage,b.cookie),400,'system route slugs are reserved');
+  const marketingPage={...valid,type:'PAGE',slug:'public-product-notes-'+stamp,title:'Product editorial page with verified revision'};
+  response=await call('POST',base,marketingPage,b.cookie);
+  status(response,201,'administrator creates website page');
+  const marketingId=response.data.entry.id;
+  response=await call('POST',base+'/'+marketingId+'/publish',{expectedRevision:1},b.cookie);
+  status(response,201,'administrator publishes website page');
+  response=await call('GET','/cms/public/PAGE/en/'+marketingPage.slug);
+  status(response,200,'public website page API');
+  assert.equal(response.data.title,marketingPage.title);
   response=await call('PATCH','/platform/operations/settings',{key:'cms_public_enabled',value:false},b.cookie);
   status(response,200,'operator turns public CMS off');
   status(await call('GET','/cms/public/GUIDE/en/'+newGuide.slug),404,'public disable immediately hides published guide');
+  status(await call('GET','/cms/public/PAGE/en/'+marketingPage.slug),404,'public disable immediately hides website page');
   response=await call('GET','/platform/operations/audit?page=1',undefined,b.cookie);
   status(response,200,'operator audit trail');
   assert.ok(response.data.events.some(e=>e.action==='cms.publish'));
