@@ -134,7 +134,8 @@ export class PlatformService {
       });
       if(changed.count!==1)throw new ConflictException('Content changed elsewhere. Reload before publishing');
       const entry=await tx.cmsEntry.findUniqueOrThrow({where:{id}});
-      await this.audit(tx,actorId,'cms.'+status.toLowerCase(),'cms',id,{revision:entry.revision});
+      const action=status==='PUBLISHED'?'publish':status==='DRAFT'?'unpublish':'archive';
+      await this.audit(tx,actorId,'cms.'+action,'cms',id,{revision:entry.revision});
       return {entry};
     });
   }
