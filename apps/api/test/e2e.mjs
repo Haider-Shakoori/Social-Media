@@ -475,6 +475,56 @@ try {
  assert.equal(destination.pathname,'/dashboard');
  assert.equal(destination.searchParams.has('code'),false,'authorization code never exposed');
  assert.equal(destination.searchParams.has('state'),false,'state never exposed');
+
  status(await call('POST',base+'/accounts/00000000-0000-4000-8000-000000000001/disconnect',{},b.cookie),404,'unknown account disconnect rejected');
+ const oauthDb=new PrismaClient();
+ const {seal,randomUrlToken,tokenHash}=require('../dist/social-oauth/oauth-crypto.js');
+ const user=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
+ try{
+  await oauthDb.socialProviderPolicy.update({where:{network:'facebook'},data:{rolloutState:'TESTING',operatorEnabled:true}});
+  const started=await call('POST',base+'/oauth/meta/start',{},b.cookie);
+  status(started,201,'operator-authorized Meta test OAuth initiation is generated locally');
+  const authUrl=new URL(started.data.authorizationUrl);
+  assert.equal(authUrl.hostname,'www.facebook.com');
+  assert.ok(authUrl.searchParams.has('state'));
+  assert.ok(!JSON.stringify(started.data).includes('test-only-not-a-real-secret'));
+  const session=await oauthDb.session.findUniqueOrThrow({where:{tokenHash:tokenHash(b.cookie.split('=')[1])}});
+  const fakeState=randomUrlToken();
+  const attempt=await oauthDb.socialOAuthAttempt.create({data:{
+   stateHash:tokenHash(fakeState),network:'meta',brandId:bOne.id,sessionId:session.id,userId:user,
+   stateUsedAt:new Date(),expiresAt:new Date(Date.now()+600000),
+   pendingCipher:seal({accounts:[{id:'synthetic-facebook-page-'+stamp,platform:'facebook',
+    name:'Test Page (synthetic)',accessToken:'not-a-real-provider-token',scopes:['pages_manage_posts']}]})
+  }});
+  status(await call('GET','/social/oauth/attempts/'+attempt.id+'/accounts',undefined,aCookie),404,'OAuth account picker is bound to initiating user/session');
+  result=await call('GET','/social/oauth/attempts/'+attempt.id+'/accounts',undefined,b.cookie);
+  status(result,200,'initiating session may view returned account identities');
+  assert.equal(result.data.accounts.length,1);
+  assert.equal(JSON.stringify(result.data).includes('not-a-real-provider-token'),false,'tokens never exposed in account selection');
+  result=await call('POST','/social/oauth/attempts/'+attempt.id+'/select',{
+    accountId:'synthetic-facebook-page-'+stamp,platform:'facebook'},b.cookie);
+  status(result,201,'session-bound one-time selection stores encrypted token');
+  assert.equal(result.data.canPublish,false,'account linking cannot publish');
+  const linked=await oauthDb.socialConnection.findUniqueOrThrow({where:{id:result.data.account.id}});
+  assert.ok(linked.encryptedCredentials?.startsWith('v1.'));
+  assert.equal(linked.encryptedCredentials.includes('not-a-real-provider-token'),false);
+  assert.equal(linked.state,'CONNECTED');
+  status(await call('POST','/social/oauth/attempts/'+attempt.id+'/select',{
+    accountId:'synthetic-facebook-page-'+stamp,platform:'facebook'},b.cookie),404,'selection replay forbidden');
+  result=await call('GET',base+'/readiness',undefined,b.cookie);
+  status(result,200,'redacted connected accounts visible to owner');
+  assert.equal(JSON.stringify(result.data).includes('not-a-real-provider-token'),false);
+  result=await call('POST',base+'/accounts/'+linked.id+'/disconnect',{},b.cookie);
+  status(result,201,'local disconnect clears tokens');
+  const removed=await oauthDb.socialConnection.findUniqueOrThrow({where:{id:linked.id}});
+  assert.equal(removed.encryptedCredentials,null,'stored access tokens cleared');
+  assert.equal(removed.state,'DISCONNECTED');
+  status(await call('POST',base+'/accounts/'+linked.id+'/disconnect',{},aCookie),404,'foreign tenant cannot disconnect');
+  console.log('PASS: Meta OAuth state, encrypted account selection, replay prevention, quotas, redaction and disconnect.');
+ }finally{
+  await oauthDb.socialProviderPolicy.update({where:{network:'facebook'},data:{rolloutState:'PLANNED',operatorEnabled:false}});
+  await oauthDb.$disconnect();
+ }
+
  console.log('PASS: Meta/X-only pilot, no public publishing, missing credential/budget gates and tenant boundaries.');
 }
