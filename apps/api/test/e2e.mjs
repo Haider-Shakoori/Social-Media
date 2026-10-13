@@ -253,3 +253,103 @@ try {
   await billingDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
   await billingDb.$disconnect();
 }
+
+
+// Batch 6 — real DB platform role boundaries, CMS drafts and deliberate publication gates.
+const opsDb=new PrismaClient();
+try{
+  status(await call('GET','/platform/operations/overview',undefined,aCookie),403,'tenant owner is not a platform administrator');
+  status(await call('GET','/platform/operations/cms',undefined,c.cookie),403,'former collaborator cannot manage CMS');
+  status(await call('GET','/platform/operations/users'),401,'public cannot enumerate platform users');
+  let response=await call('GET','/cms/public/ARTICLE/en');
+  status(response,200,'anonymous CMS endpoint available but gated');
+  assert.deepEqual(response.data.items,[],'public CMS must start empty');
+  const adminId=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
+  await opsDb.user.update({where:{id:adminId},data:{isPlatformAdmin:true}});
+  response=await call('GET','/platform/operations/overview',undefined,b.cookie);
+  status(response,200,'authorized operator sees aggregate platform counts');
+  assert.ok(response.data.tenants>=2&&response.data.users>=3);
+  assert.ok(!JSON.stringify(response.data).includes('passwordHash'));
+  response=await call('GET','/platform/operations/users?page=1',undefined,b.cookie);
+  status(response,200,'admin accounts listing');assert.ok(response.data.users.length>=3);
+  assert.ok(response.data.users.every(u=>!('passwordHash'in u)&&!('tokenHash'in u)));
+  status(await call('GET','/platform/operations/users?page=0',undefined,b.cookie),400,'pagination validated');
+  response=await call('GET','/platform/operations/tenants?page=1',undefined,b.cookie);
+  status(response,200,'admin tenant listings');assert.ok(response.data.tenants.some(t=>t.id===idA));
+
+  const base='/platform/operations/cms';
+  const valid={
+    type:'ARTICLE',locale:'en',slug:'cms-batch-six-'+stamp,title:'Safe editorial demo for operators',
+    description:'Long editorial description that is appropriate for the pre-launch CMS experiment.',
+    category:'Product updates',readingTime:'3 min',sections:[
+      {heading:'What is tested',body:'This text comes from persisted CMS content, not a placeholder card.'},
+    ],
+  };
+  status(await call('POST',base,valid,aCookie),403,'tenant owner cannot write CMS');
+  status(await call('POST',base,{...valid,slug:'../../bad'},b.cookie),400,'unsafe slug validation');
+  response=await call('POST',base,valid,b.cookie);
+  status(response,201,'operator can create CMS draft');const entryId=response.data.entry.id;
+  assert.equal(response.data.entry.status,'DRAFT');
+  response=await call('GET',base+'?page=1',undefined,b.cookie);
+  status(response,200,'draft appears in protected CMS index');
+  assert.ok(response.data.entries.some(e=>e.id===entryId));
+  status(await call('POST',base+'/'+entryId+'/publish',{expectedRevision:1},aCookie),403,'nonadmin cannot publish');
+  status(await call('POST',base+'/'+entryId+'/publish',{expectedRevision:999},b.cookie),409,'stale revision cannot publish');
+
+  response=await call('PATCH',base+'/'+entryId,{
+    expectedRevision:1,title:'Safe revised editorial title',sections:[
+      {heading:'Reviewed content',body:'An approved plain text section; no raw HTML is rendered.'}
+    ]
+  },b.cookie);
+  status(response,200,'operator edits draft');assert.equal(response.data.entry.revision,2);
+  status(await call('PATCH',base+'/'+entryId,{expectedRevision:1,title:'Stale editor'},b.cookie),409,'stale editor rejected');
+
+  response=await call('GET','/cms/public/ARTICLE/en');
+  assert.deepEqual(response.data.items,[],'draft is never public even with API access');
+
+  response=await call('PATCH','/platform/operations/settings',{key:'cms_public_enabled',value:true},b.cookie);
+  status(response,200,'operator enables public CMS setting');
+  status(await call('PATCH','/platform/operations/settings',{key:'publishing_enabled',value:true},b.cookie),400,'unknown unsafe platform settings forbidden');
+  status(await call('PATCH','/platform/operations/settings',{key:'support_email',value:'invalid email'},b.cookie),400,'email setting validated');
+  status(await call('PATCH','/platform/operations/settings',{key:'support_email',value:'support@example.test'},b.cookie),200,'safe support email');
+
+  response=await call('POST',base+'/'+entryId+'/publish',{expectedRevision:2},b.cookie);
+  status(response,201,'operator explicitly publishes CMS entry');
+  assert.equal(response.data.entry.status,'PUBLISHED');
+  const publishedRevision=response.data.entry.revision;
+  response=await call('GET','/cms/public/ARTICLE/en');
+  status(response,200,'published CMS index');
+  assert.ok(response.data.items.some(x=>x.slug===valid.slug),'public list contains published entry');
+  response=await call('GET','/cms/public/ARTICLE/en/'+valid.slug);
+  status(response,200,'published article routed');
+  assert.equal(response.data.title,'Safe revised editorial title');
+  status(await call('GET','/cms/public/GUIDE/en/'+valid.slug),404,'CMS type segregation');
+  status(await call('GET','/cms/public/ARTICLE/unknown/'+valid.slug),404,'unknown locale rejected');
+
+  response=await call('PATCH',base+'/'+entryId,{expectedRevision:publishedRevision,title:'Retracted for review'},b.cookie);
+  status(response,200,'editing published content retracts it');
+  assert.equal(response.data.entry.status,'DRAFT');
+  status(await call('GET','/cms/public/ARTICLE/en/'+valid.slug),404,'edited article hidden until reapproved');
+  response=await call('POST',base+'/'+entryId+'/archive',{expectedRevision:response.data.entry.revision},b.cookie);
+  status(response,201,'archived post cannot reappear');
+  status(await call('POST',base+'/'+entryId+'/publish',{expectedRevision:response.data.entry.revision},b.cookie),409,'archived content cannot be published');
+
+  const newGuide={...valid,type:'GUIDE',slug:'guide-six-'+stamp,title:'Guide content for the documented workflow'};
+  response=await call('POST',base,newGuide,b.cookie);
+  status(response,201,'create guide in separate content type');
+  const guideId=response.data.entry.id;
+  response=await call('POST',base+'/'+guideId+'/publish',{expectedRevision:1},b.cookie);
+  status(response,201,'publish guide');
+  response=await call('PATCH','/platform/operations/settings',{key:'cms_public_enabled',value:false},b.cookie);
+  status(response,200,'operator turns public CMS off');
+  status(await call('GET','/cms/public/GUIDE/en/'+newGuide.slug),404,'public disable immediately hides published guide');
+  response=await call('GET','/platform/operations/audit?page=1',undefined,b.cookie);
+  status(response,200,'operator audit trail');
+  assert.ok(response.data.events.some(e=>e.action==='cms.publish'));
+  assert.ok(response.data.events.some(e=>e.action==='platform.setting.update'));
+  status(await call('GET','/platform/operations/audit',undefined,aCookie),403,'audit is admin-only');
+  console.log('PASS: platform metrics, users, CMS drafts, revision locks, publish/retract, settings, auditing, immediate public disable.');
+}finally{
+  await opsDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
+  await opsDb.$disconnect();
+}
