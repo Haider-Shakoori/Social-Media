@@ -25,7 +25,7 @@ export const inviteAcceptanceInput=z.strictObject({token:tokenInput.shape.token}
 export const invitationId=z.uuid();
 export const brandInput=z.strictObject({
   name:z.string().trim().min(2).max(200),
-  locale:z.enum(['en','fa-AF','ps','ar']).default('en'),
+  locale:z.literal('en').default('en'),
   industry:z.string().trim().max(120).nullable().optional(),
   description:z.string().trim().max(4000).nullable().optional(),
   website:z.url().max(500).startsWith('https://').nullable().optional(),
@@ -33,7 +33,7 @@ export const brandInput=z.strictObject({
   primaryColor:z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#6ee7b7'),
   targetAudience:z.string().trim().max(4000).nullable().optional(),
   tone:z.string().trim().max(120).nullable().optional(),
-  languages:z.array(z.enum(['en','fa-AF','ps','ar'])).min(1).max(4).default(['en']),
+  languages:z.array(z.literal('en')).length(1).default(['en']),
 });
 export const brandPatchInput=brandInput.partial().refine(x=>Object.keys(x).length>0);
 export const grantBrandAccessInput=z.strictObject({
