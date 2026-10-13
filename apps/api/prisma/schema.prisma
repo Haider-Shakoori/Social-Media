@@ -131,6 +131,8 @@ model Brand {
   workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   connections SocialConnection[]
   posts       ContentPost[]
+  campaigns   ContentCampaign[]
+  mediaAssets MediaAsset[]
   members     BrandMember[]
   oauthAttempts SocialOAuthAttempt[]
   industry    String?  @db.VarChar(120)
@@ -173,6 +175,8 @@ model ContentPost {
   id        String       @id @default(uuid()) @db.Uuid
   brandId   String       @map("brand_id") @db.Uuid
   state     PostState    @default(DRAFT)
+  campaignId String? @map("campaign_id") @db.Uuid
+  campaign ContentCampaign? @relation(fields:[campaignId],references:[id],onDelete:SetNull)
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   brand     Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -188,6 +192,8 @@ model PostVersion {
   postId    String            @map("post_id") @db.Uuid
   number    Int
   caption   String            @db.Text
+  mediaUrls String[] @default([]) @map("media_urls")
+  language String @default("en") @db.VarChar(12)
   createdAt DateTime          @default(now()) @map("created_at")
   post      ContentPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
   approvals ApprovalRequest[]
@@ -557,4 +563,28 @@ model SocialOAuthAttempt {
  @@index([userId,expiresAt])
  @@index([brandId,createdAt])
  @@map("social_oauth_attempts")
+}
+
+
+model ContentCampaign {
+ id String @id @default(uuid()) @db.Uuid
+ brandId String @map("brand_id") @db.Uuid
+ name String @db.VarChar(150)
+ description String @default("") @db.VarChar(500)
+ createdAt DateTime @default(now()) @map("created_at")
+ brand Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
+ posts ContentPost[]
+ @@index([brandId])
+ @@map("content_campaigns")
+}
+model MediaAsset {
+ id String @id @default(uuid()) @db.Uuid
+ brandId String @map("brand_id") @db.Uuid
+ url String @db.VarChar(1000)
+ mimeType String @map("mime_type") @db.VarChar(100)
+ altText String @default("") @map("alt_text") @db.VarChar(500)
+ createdAt DateTime @default(now()) @map("created_at")
+ brand Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
+ @@index([brandId])
+ @@map("media_assets")
 }

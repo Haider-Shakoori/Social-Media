@@ -1,0 +1,10 @@
+CREATE TABLE "content_campaigns"("id" UUID NOT NULL,"brand_id" UUID NOT NULL,"name" VARCHAR(150) NOT NULL,"description" VARCHAR(500) NOT NULL DEFAULT '',"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "content_campaigns_pkey" PRIMARY KEY("id"));
+CREATE INDEX "content_campaigns_brand_id_idx" ON "content_campaigns"("brand_id");
+ALTER TABLE "content_campaigns" ADD CONSTRAINT "content_campaigns_brand_id_fkey" FOREIGN KEY("brand_id") REFERENCES "brands"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "content_posts" ADD COLUMN "campaign_id" UUID;
+ALTER TABLE "content_posts" ADD CONSTRAINT "content_posts_campaign_id_fkey" FOREIGN KEY("campaign_id") REFERENCES "content_campaigns"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "post_versions" ADD COLUMN "media_urls" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "post_versions" ADD COLUMN "language" VARCHAR(12) NOT NULL DEFAULT 'en';
+CREATE TABLE "media_assets"("id" UUID NOT NULL,"brand_id" UUID NOT NULL,"url" VARCHAR(1000) NOT NULL,"mime_type" VARCHAR(100) NOT NULL,"alt_text" VARCHAR(500) NOT NULL DEFAULT '',"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "media_assets_pkey" PRIMARY KEY("id"));
+CREATE INDEX "media_assets_brand_id_idx" ON "media_assets"("brand_id");
+ALTER TABLE "media_assets" ADD CONSTRAINT "media_assets_brand_id_fkey" FOREIGN KEY("brand_id") REFERENCES "brands"("id") ON DELETE CASCADE ON UPDATE CASCADE;
