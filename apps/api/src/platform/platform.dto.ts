@@ -26,11 +26,11 @@ export const listCmsQuery=z.strictObject({
 });
 export const pageQuery=z.strictObject({page:z.coerce.number().int().min(1).max(10000).default(1)});
 export const platformSettingInput=z.strictObject({
-  key:z.enum(['cms_public_enabled','support_email','maintenance_notice']),
+  key:z.enum(['cms_public_enabled','support_email','maintenance_notice','global_social_pause']),
   value:z.union([z.boolean(),z.string().max(500)]),
 });
 export function settingValue(key:string,value:boolean|string):boolean|string {
-  if(key==='cms_public_enabled'){
+  if(key==='cms_public_enabled'||key==='global_social_pause'){
     if(typeof value!=='boolean')throw new Error('CMS public flag must be boolean');
     return value;
   }
