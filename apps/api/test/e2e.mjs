@@ -444,3 +444,37 @@ try {
   await providerDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
   await providerDb.$disconnect();
 }
+
+
+// Batch 8: Only Meta and X may be considered for pilot OAuth; no API/paid service contacted.
+{
+ const r=await call('GET','/tenants/'+idB+'/providers',undefined,b.cookie);
+ status(r,200,'only Meta/X pilot catalog visible');
+ assert.deepEqual(new Set(r.data.providers.map(p=>p.id)),new Set(['instagram','facebook','x']));
+ assert.equal(r.data.deferredProviders.length,7,'seven future integrations deferred');
+ const list=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,b.cookie);
+ status(list,200,'existing brand available');
+ const bOne=list.data.brands.find(x=>x.name==='Brand One');
+ assert.ok(bOne?.id);
+ const base='/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+bOne.id+'/social';
+ let result=await call('GET',base+'/readiness',undefined,b.cookie);
+ status(result,200,'owner can view pilot credentials readiness');
+ assert.deepEqual(new Set(result.data.providers.map(p=>p.network)),new Set(['meta','x']));
+ assert.ok(result.data.providers.every(p=>p.canPublish===false));
+ assert.equal(JSON.stringify(result.data).includes('encryptedCredentials'),false);
+ status(await call('GET',base+'/readiness',undefined,aCookie),404,'other tenant cannot inspect social OAuth state');
+ status(await call('GET',base+'/readiness'),401,'unauthed readiness hidden');
+ status(await call('POST',base+'/oauth/meta/start',{},aCookie),404,'cross-tenant OAuth start rejected');
+ status(await call('POST',base+'/oauth/meta/start',{},b.cookie),503,'no Meta credentials/provider approval blocks OAuth start');
+ status(await call('POST',base+'/oauth/x/start',{},b.cookie),503,'no paid X budget or authorized API access blocks OAuth');
+ status(await call('POST',base+'/oauth/youtube/start',{},b.cookie),400,'deferred provider cannot initiate OAuth');
+ status(await call('GET','/social/oauth/attempts/00000000-0000-4000-8000-000000000001/accounts',undefined,b.cookie),404,'unknown one-time attempt inaccessible');
+ const cancelled=await call('GET','/social/oauth/meta/callback?error=access_denied',undefined,b.cookie);
+ assert.equal(cancelled.response.status,303,'OAuth cancellation redirects to safe dashboard');
+ const destination=new URL(cancelled.response.headers.get('location'));
+ assert.equal(destination.pathname,'/dashboard');
+ assert.equal(destination.searchParams.has('code'),false,'authorization code never exposed');
+ assert.equal(destination.searchParams.has('state'),false,'state never exposed');
+ status(await call('POST',base+'/accounts/00000000-0000-4000-8000-000000000001/disconnect',{},b.cookie),404,'unknown account disconnect rejected');
+ console.log('PASS: Meta/X-only pilot, no public publishing, missing credential/budget gates and tenant boundaries.');
+}
