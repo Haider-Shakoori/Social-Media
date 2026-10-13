@@ -1,7 +1,7 @@
-import {BadRequestException,ConflictException,Injectable,NotFoundException} from '@nestjs/common';
+import {BadRequestException,ConflictException,ForbiddenException,Injectable,NotFoundException} from '@nestjs/common';
 import {PrismaService} from '../prisma/prisma.service';
 import {AccessService} from '../tenants/access.service';
-import {EntitlementsService} from '../billing/entitlements.service';
+import {EntitlementsService,monthStartUTC} from '../billing/entitlements.service';
 import type {z} from 'zod';
 import {slotInput} from './calendar.controller';
 import {randomUUID} from 'node:crypto';
@@ -25,17 +25,27 @@ export class CalendarService{
   if(first.getTime()<Date.now()+60_000||dates.at(-1)!.getTime()>Date.now()+90*minutes){
    throw new BadRequestException('Schedule must be 1 minute to 90 days in the future');
   }
-  // Capacity is reserved per requested reminder; not refunded when manually cancelled.
-  const result=await this.billing.consume(t,'SCHEDULED_POST',input.count);
-  const seriesId=input.count>1?randomUUID():null;
-  const data=dates.map(scheduledAt=>({brandId:b,postId:input.postId,network:input.network,
-   timezone:input.timezone,scheduledAt,seriesId}));
-  const slots=await this.db.$transaction(async tx=>{
-   await tx.calendarSlot.createMany({data});
-   return tx.calendarSlot.findMany({where:{brandId:b,seriesId:seriesId||undefined,scheduledAt:{in:dates}},
+  // Reserve quota and write exact series IDs in ONE serialized database transaction.
+  const seriesId=randomUUID();
+  const result=await this.billing.inTransaction(t,async(tx,subscription)=>{
+   const monthStart=monthStartUTC();
+   const key={tenantId:t,metric:'SCHEDULED_POST' as const,monthStart};
+   const current=await tx.usageBucket.findUnique({where:{tenantId_metric_monthStart:key}});
+   if((current?.used||0)+dates.length>subscription.monthlyScheduledPosts){
+    throw new ForbiddenException('Monthly scheduling allowance exhausted');
+   }
+   const existingPost=await tx.contentPost.findFirst({where:{id:input.postId,brandId:b}});
+   if(!existingPost)throw new NotFoundException('Post no longer belongs to brand');
+   const used=await tx.usageBucket.upsert({where:{tenantId_metric_monthStart:key},
+    create:{...key,used:dates.length},update:{used:{increment:dates.length}}});
+   await tx.calendarSlot.createMany({data:dates.map(scheduledAt=>({
+    brandId:b,postId:input.postId,network:input.network,timezone:input.timezone,scheduledAt,seriesId,
+   }))});
+   const slots=await tx.calendarSlot.findMany({where:{brandId:b,seriesId},
     select:{id:true,scheduledAt:true,network:true,state:true}});
+   return {slots,usage:{used:used.used,limit:subscription.monthlyScheduledPosts}};
   });
-  return {slots,usage:result,notice:'These are manual reminders. Daily/weekly repetition is UTC interval-based and may move local clock time at DST.'};
+  return {...result,notice:'These are manual reminders. UTC recurrence may shift local clock time during DST.'};
  }
  async cancel(t:string,w:string,b:string,u:string,id:string){
   await this.access.brand(t,w,b,u,['OWNER','ADMIN','EDITOR']);

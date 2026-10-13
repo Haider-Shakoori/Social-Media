@@ -7,7 +7,7 @@
 - **Current pilot: Facebook Pages, Instagram professional accounts and X (Twitter) only.** Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile and Reddit are postponed to later phases.
 - Commercial automatic publishing: **official, permitted APIs only**, after testing the precise platform, app, permissions, account type, formats, quotas and approved use case.
 - Every unsupported capability: honest "not available / manual export" state. Experimental session connectors are separately isolated, disabled by default, and never substitutes for authorization or paid API access.
-- Branches for batches 01-07 have code and CI checks, but PRs are not merged into `main` or deployed. GitHub PR checks do not replace production acceptance.
+- Batches 01–16 have been merged into `main` after successful GitHub CI. **No application deployment or provider/API activation** has occurred. GitHub PR checks do not replace production acceptance.
 - VPS deployment **not authorized**. External developer apps, paid API access and live social publishing **not configured**.
 
 ## Stage A — Core platform (Batches 01–19)
@@ -15,22 +15,22 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 
 | Batch | Main deliverable | State |
 |---|---|---|
-| 01 | Repository bootstrap, docs, health API, infrastructure, CI | Implemented on PR #1; unmerged |
-| 02 | Reusable design system and public marketing site | Implemented on PR #2; unmerged |
-| 03 | Authentication, tenant schema, authorization, isolation tests | Implemented on PR #3; unmerged |
-| 04 | Workspaces, teams, multilingual brand profiles and onboarding | Implemented on PR #4; unmerged |
-| 05 | Subscription plans, trials, quotas, offline billing | Implemented on PR #5; unmerged |
-| 06 | Platform super-admin modules and website CMS | Implemented on PR #7; unmerged |
-| 07 | Ten-provider catalog, policy controls, scoped manual export and worker protection | Implemented on Batch 7 PR; unmerged |
-| 08 | Meta (Facebook Pages/Instagram) and X OAuth pilot, encrypted credentials and permission gates; no public posting | Implemented on PR #9; unmerged |
-| 09 | Quota-limited Cloudflare AI and deterministic branded templates | Foundation in PR for Batch 9; launch gates pending |
-| 10 | Content editor, media library, campaigns and immutable versions | Foundation in PR for Batch 10; launch gates pending |
-| 11 | Calendar and validated natural-language recurrence | Foundation in PR for Batch 11; launch gates pending |
-| 12 | Email/in-app approval, revocation, immutable audit | Foundation in PR for Batch 12; launch gates pending |
-| 13 | Independent notification center with email/in-app delivery and optional approved WhatsApp Business API | Foundation in PR for Batch 13; launch gates pending |
-| 14 | Durable scheduled publishing, idempotency, reconciliation | Foundation in PR for Batch 14; launch gates pending |
-| 15 | Account Protection Center, pause/restriction/kill switches | Foundation in PR for Batch 15; launch gates pending |
-| 16 | Evidence-based analytics limited to real API rights | Foundation in PR for Batch 16; launch gates pending |
+| 01 | Repository bootstrap, docs, health API, infrastructure, CI | Merged PR #1 |
+| 02 | Reusable design system and public marketing site | Merged PR #2 |
+| 03 | Authentication, tenant schema, authorization, isolation tests | Merged PR #3 |
+| 04 | Workspaces, teams, multilingual brand profiles and onboarding | Merged PR #4 |
+| 05 | Subscription plans, trials, quotas, offline billing | Merged PR #5 |
+| 06 | Platform super-admin modules and website CMS | Merged PR #7 |
+| 07 | Ten-provider catalog, policy controls, scoped manual export and worker protection | Merged PR #8 |
+| 08 | Meta (Facebook Pages/Instagram) and X OAuth pilot, encrypted credentials and permission gates; no public posting | Merged PR #9 |
+| 09 | Quota-limited Cloudflare AI and deterministic branded templates | Merged foundation PR #10; launch gates pending |
+| 10 | Content editor, media library, campaigns and immutable versions | Merged foundation PR #11; launch gates pending |
+| 11 | Calendar and validated natural-language recurrence | Merged foundation PR #12; launch gates pending |
+| 12 | Email/in-app approval, revocation, immutable audit | Merged foundation PR #13; launch gates pending |
+| 13 | Independent notification center with email/in-app delivery and optional approved WhatsApp Business API | Merged foundation PR #14; launch gates pending |
+| 14 | Durable scheduled publishing, idempotency, reconciliation | Merged foundation PR #15; launch gates pending |
+| 15 | Account Protection Center, pause/restriction/kill switches | Merged foundation PR #16; launch gates pending |
+| 16 | Evidence-based analytics limited to real API rights | Merged foundation PR #17; launch gates pending |
 | 17 | Agency collaboration, client approval roles and reporting | Planned |
 | 18 | Multilingual/RTL CMS, SEO and accessibility | Planned |
 | 19 | Core-platform security, performance and **core-release** readiness | Planned |
@@ -87,7 +87,7 @@ The core platform stays on the existing VPS. No third-party paid aggregation is 
 8. Pull request review before merge. No deployment without explicit user authorization.
 
 ## Counts
-**27 planned batches** = 19 core + 8 individual provider extensions. **16 batch foundations committed on stacked, unmerged PRs; 11 future batches remain. Commercial deployment and external-provider publishing are NOT complete.**. The future 8 providers are roadmap commitments, **not existing live integrations**.
+**27 planned batches** = 19 core + 8 individual provider extensions. **16 batch foundations merged into main with passing stacked CI checks; 11 future batches remain. Commercial deployment and external-provider publishing are NOT complete.**. The future 8 providers are roadmap commitments, **not existing live integrations**.
 
 ## Accelerated batches 09-16
 See BATCH-09-16-DELIVERY.md. Batch 14 is manual due-date reconciliation only, not automatic Meta/X publishing. AI image generation, natural-language scheduling and genuine social analytics remain future release gates.
