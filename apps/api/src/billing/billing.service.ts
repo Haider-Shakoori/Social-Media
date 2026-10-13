@@ -111,8 +111,12 @@ export class BillingService {
  async tenantForPlatform(tenantId:string){
   const tenant=await this.db.tenant.findUnique({where:{id:tenantId},select:{id:true,name:true,slug:true}});
   if(!tenant)throw new NotFoundException('Tenant not found');
-  const subscription=await this.db.subscription.findUnique({where:{tenantId},include:{plan:true}});
-  return {tenant,subscription:subscription?{...subscription,effectiveState:effectiveState(subscription)}:null};
+  const [subscription,invoices,payments]=await Promise.all([
+    this.db.subscription.findUnique({where:{tenantId},include:{plan:true}}),
+    this.db.invoice.findMany({where:{tenantId},select:{id:true,number:true,amountMinor:true,currency:true,status:true,issuedAt:true},take:50,orderBy:{issuedAt:'desc'}}),
+    this.db.paymentRecord.findMany({where:{tenantId},select:{id:true,invoiceId:true,reference:true,amountMinor:true,currency:true,state:true,createdAt:true},take:50,orderBy:{createdAt:'desc'}}),
+  ]);
+  return {tenant,subscription:subscription?{...subscription,effectiveState:effectiveState(subscription)}:null,invoices,payments};
  }
  async activate(actorId:string,tenantId:string,input:Activate){
   return this.db.$transaction(async tx=>{

@@ -67,7 +67,10 @@ export class InvitationsService {
     await this.limiter.check('accept-user',userId,15,3600);
     const hashed=hashToken(token);
     const now=new Date();
-    return this.db.$transaction(async tx=>{
+    const lookup=await this.db.tenantInvitation.findUnique({where:{tokenHash:hashed},select:{tenantId:true}});
+    if(!lookup)throw new BadRequestException('Invitation invalid or expired');
+    return this.quotas.inTransaction(lookup.tenantId,async(tx,s)=>{
+      await this.quotas.assertCount(tx,s,'SEATS',0);
       // Existing logged-in identity is the only possible recipient. The token alone
       // does not grant access to a different email address.
       const user=await tx.user.findUniqueOrThrow({where:{id:userId},select:{email:true,emailVerifiedAt:true}});

@@ -4,7 +4,8 @@ const api=process.env.NEXT_PUBLIC_API_BASE_URL||"http://localhost:4000/api/v1";
 type Tenant={id:string;name:string;slug:string;subscription:{state:string;periodEnd:string;plan:{code:string;name:string}}|null};
 type Plan={id:string;code:string;name:string;enabled:boolean;published:boolean;currency:string;monthlyPriceMinor:number|null;yearlyPriceMinor:number|null;maxBrands:number;maxSeats:number};
 type Invoice={id:string;number:string;amountMinor:number;currency:string};
-type Payment={id:string;reference:string;state:string};
+type Payment={id:string;reference:string;state:string;invoiceId:string|null;amountMinor:number;currency:string};
+type TenantDetail={invoices:Invoice[];payments:Payment[]};
 const classes="w-full rounded-xl border border-white/20 bg-[#07131b] px-4 py-3 text-sm text-white";
 async function req<T>(path:string,method="GET",body?:unknown):Promise<T>{
  const r=await fetch(api+"/platform/billing"+path,{method,credentials:"include",headers:body===undefined?undefined:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});
@@ -18,10 +19,16 @@ export function PlatformBillingPanel(){
  const [tenantId,setTenantId]=useState(""),[planCode,setPlanCode]=useState("growth"),[cycle,setCycle]=useState<"MONTHLY"|"YEARLY">("MONTHLY");
  const [days,setDays]=useState(7),[invoicePlan,setInvoicePlan]=useState("growth"),[amount,setAmount]=useState("2500"),[currency,setCurrency]=useState("USD");
  const [invoice,setInvoice]=useState<Invoice|null>(null),[reference,setReference]=useState(""),[payment,setPayment]=useState<Payment|null>(null);
+ const [details,setDetails]=useState<TenantDetail|null>(null);
  const [error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
+ async function getDetails(id:string){
+  const d=await req<TenantDetail>("/tenants/"+id);
+  setDetails(d);
+ }
  async function refresh(){
   const [t,p]=await Promise.all([req<{tenants:Tenant[]}>("/tenants"),req<{plans:Plan[]}>("/plans")]);
   setTenants(t.tenants);setPlans(p.plans);setTenantId(old=>old||t.tenants[0]?.id||"");
+  if(tenantId)await getDetails(tenantId);
  }
  useEffect(()=>{let active=true;
   void Promise.all([req<{tenants:Tenant[]}>("/tenants"),req<{plans:Plan[]}>("/plans")])
@@ -29,6 +36,10 @@ export function PlatformBillingPanel(){
    .catch(e=>{if(active){setError(e instanceof Error?e.message:"Not authorized");setAccess("denied");}});
   return()=>{active=false;};
  },[]);
+ useEffect(()=>{if(access!=="granted"||!tenantId)return;let alive=true;
+  void req<TenantDetail>("/tenants/"+tenantId).then(d=>{if(alive)setDetails(d);}).catch(()=>{if(alive)setDetails(null);});
+  return()=>{alive=false;};
+ },[access,tenantId]);
  async function change(path:string,body?:unknown){setBusy(true);setError("");setNotice("");
   try{await req(path,"POST",body);await refresh();setNotice("Operation completed and audited.");}
   catch(e){setError(e instanceof Error?e.message:"Operation failed");}
@@ -41,6 +52,12 @@ export function PlatformBillingPanel(){
  async function record(e:FormEvent){e.preventDefault();if(!invoice)return;setBusy(true);setError("");
   try{const d=await req<{payment:Payment}>("/payments","POST",{invoiceId:invoice.id,reference});setPayment(d.payment);setNotice("Payment reference recorded as pending; not verified.");}
   catch(e){setError(e instanceof Error?e.message:"Could not record payment");}finally{setBusy(false);}
+ }
+ async function reviewExisting(id:string,decision:"VERIFY"|"REJECT"){
+  setBusy(true);setError("");
+  try{await req("/payments/"+id+"/decision","POST",{decision});setNotice("Payment decision recorded; subscription activation is separate.");await refresh();}
+  catch(e){setError(e instanceof Error?e.message:"Review failed");}
+  finally{setBusy(false);}
  }
  async function decide(decision:"VERIFY"|"REJECT"){if(!payment)return;setBusy(true);setError("");
   try{await req("/payments/"+payment.id+"/decision","POST",{decision});setNotice("Payment "+decision.toLowerCase()+" decision recorded. Subscription activation is a separate audited action.");setPayment(null);await refresh();}
@@ -75,6 +92,10 @@ export function PlatformBillingPanel(){
     <div className="grid grid-cols-2 gap-3"><label className="text-xs text-slate-300">Amount (minor units)<input required type="number" min={1} className={"mt-2 "+classes} value={amount} onChange={e=>setAmount(e.target.value)}/></label><label className="text-xs text-slate-300">Currency<input required pattern="[A-Z]{3}" maxLength={3} className={"mt-2 "+classes} value={currency} onChange={e=>setCurrency(e.target.value.toUpperCase())}/></label></div>
     <button type="submit" disabled={busy||!tenantId} className="rounded-xl border border-emerald-300/30 px-5 py-3 text-sm font-bold text-emerald-200">Issue invoice</button>
    </form>
+   {details&&<div className="mt-6 space-y-3 border-t border-white/10 pt-6"><h3 className="font-semibold">Recorded payments</h3>
+    {details.payments.length===0?<p className="text-sm text-slate-400">No payment records for this organization.</p>:details.payments.map(p=><div key={p.id} className="rounded-xl border border-white/10 p-4 text-sm"><div className="flex flex-wrap justify-between gap-3"><span>{p.reference}</span><span>{p.state}</span></div>
+    {p.state==="PENDING"&&<div className="mt-3 flex gap-2"><button disabled={busy} onClick={()=>void reviewExisting(p.id,"VERIFY")} className="rounded-xl bg-emerald-300 px-4 py-2 text-xs font-semibold text-slate-950">Verify</button><button disabled={busy} onClick={()=>void reviewExisting(p.id,"REJECT")} className="rounded-xl border border-rose-300/30 px-4 py-2 text-xs font-semibold text-rose-200">Reject</button></div>}</div>)}
+   </div>}
    {invoice&&<div className="mt-5 border-t border-white/10 pt-5"><p className="text-sm font-semibold">Issued invoice {invoice.number}</p>
     <form onSubmit={e=>void record(e)} className="mt-4 space-y-3"><label className="text-xs text-slate-300">Bank/cash reference<input required minLength={3} maxLength={120} className={"mt-2 "+classes} value={reference} onChange={e=>setReference(e.target.value)}/></label>
     <button disabled={busy} className="rounded-xl border border-white/20 px-5 py-3 text-sm" type="submit">Record offline payment</button></form>
