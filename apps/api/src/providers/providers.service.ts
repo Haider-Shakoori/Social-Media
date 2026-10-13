@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  PROVIDER_CATALOG,buildManualExport,getProviderDescriptor,inspectProvider,isSocialNetwork,
+  PROVIDER_CATALOG,PILOT_PROVIDER_CATALOG,buildManualExport,getProviderDescriptor,inspectProvider,isSocialNetwork,isPilotNetwork,
   type SocialNetwork,type ProviderRollout,
 } from '@social/shared';
 import type { z } from 'zod';
@@ -44,17 +44,22 @@ export class ProvidersService {
  }
  async tenantCatalog(userId:string,tenantId:string){
   await this.tenantRole(userId,tenantId);
-  return {providers:await this.catalog(),notice:'No live provider integration is enabled. Export packages must be posted manually.'};
+  return {providers:(await this.catalog()).filter(x=>isPilotNetwork(x.id)),
+    deferredProviders:PROVIDER_CATALOG.filter(x=>!isPilotNetwork(x.id)).map(x=>({id:x.id,name:x.name,phase:'future'})),
+    notice:'Facebook, Instagram and X are the pilot. Other networks are deferred. Live publishing is disabled.'};
  }
  async brandCatalog(userId:string,tenantId:string,workspaceId:string,brandId:string){
   const {brand}=await this.visibleBrand(userId,tenantId,workspaceId,brandId);
   const connections=await this.db.socialConnection.findMany({where:{brandId},select:{
     id:true,platform:true,mode:true,state:true,createdAt:true,
   },take:50,orderBy:{createdAt:'desc'}});
-  return {brand,providers:await this.catalog(),connections,notice:'Existing connection records are not proof of authorized publishing.'};
+  return {brand,providers:(await this.catalog()).filter(x=>isPilotNetwork(x.id)),
+    deferredProviders:PROVIDER_CATALOG.filter(x=>!isPilotNetwork(x.id)).map(x=>({id:x.id,name:x.name,phase:'future'})),
+    connections,notice:'Provider account links do not grant publishing rights.'};
  }
  async manualPackage(userId:string,tenantId:string,workspaceId:string,brandId:string,input:ExportData){
   const {role}=await this.visibleBrand(userId,tenantId,workspaceId,brandId);
+  if(!isPilotNetwork(input.network))throw new ForbiddenException('Platform deferred to a future phase');
   if(!['OWNER','ADMIN','EDITOR'].includes(role))throw new ForbiddenException('Editor access required');
   const policy=await this.db.socialProviderPolicy.findUnique({where:{network:input.network},select:{rolloutState:true}});
   if(!policy||policy.rolloutState==='DISABLED'||policy.rolloutState==='RESTRICTED'){
@@ -82,6 +87,7 @@ export class ProvidersService {
  }
  async updateOperator(actorId:string,network:string,input:PolicyData) {
   if(!isSocialNetwork(network))throw new NotFoundException('Unknown social provider');
+  if(!isPilotNetwork(network))throw new ForbiddenException('Platform deferred to future roadmap');
   // A different future release process will verify OAuth, legal review and paid API billing.
   // Batch 7 has no route for production_ready, apiApproved, costApproved or productionVerified.
   if(input.operatorEnabled===true && input.rolloutState!=='TESTING'){

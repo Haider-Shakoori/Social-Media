@@ -8,7 +8,7 @@ An independent multi-tenant SaaS using its own services and infrastructure: Node
 3. Platform super-admin for subscription plans, tenant/user visibility, audited operational settings, and gated article/guide/custom-page CMS (Batch 6 branch).
 
 ## Planned platform coverage
-Instagram, Facebook Pages, Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile, X (Twitter) and Reddit. The **27-batch roadmap** comprises 19 core-platform batches plus 8 individually gated provider integrations. An included network is **not** a claim of live API access. See [Provider eligibility and implementation plan](docs/PLATFORM-INTEGRATION-PLAN.md).
+**Pilot now: Facebook Pages, Instagram professional accounts and X (Twitter).** Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile and Reddit are deferred to a future phase. The **27-batch roadmap** comprises 19 core-platform batches plus 8 individually gated provider integrations. An included network is **not** a claim of live API access. See [Provider eligibility and implementation plan](docs/PLATFORM-INTEGRATION-PLAN.md).
 
 ## Connection strategy
 Our production publishing design requires verified, authorized official social APIs. Isolated unofficial connector research remains disabled by default and cannot publish through the production queue. Unsupported networks will offer manual post export/publishing.
@@ -20,7 +20,8 @@ Our production publishing design requires verified, authorized official social A
 - Batch 4: Multilingual brands, tenant invitations, scoped team permissions — PR #4.
 - Batch 5: Trials, quotas and manual offline billing, with no active payment gateway — PR #5.
 - Batch 6: Protected platform console and publication-gated CMS — PR #7 (stacked after roadmap PR #6).
-- Batch 7: Ten-network typed connector catalog, tenant-scoped manual export, audited platform policy controls and fail-closed publishing worker — Batch 7 PR.
+- Batch 7: Ten-network typed connector catalog, tenant-scoped manual export, audited platform policy controls and fail-closed publishing worker — PR #8.
+- Batch 8: Meta and X secure OAuth account-linking pilot, account selection and disconnect, with no automatic publishing — Batch 8 PR.
 
 Public signup is OFF by default. No live social publishing, payment provider or production deployment has been enabled. No other projects or services were modified.
 
@@ -36,6 +37,7 @@ Public signup is OFF by default. No live social publishing, payment provider or 
 - [Development roadmap — 27 batches](docs/ROADMAP.md)
 - [Ten-platform integration strategy and API approval gates](docs/PLATFORM-INTEGRATION-PLAN.md)
 - [Batch 7 universal connector architecture](docs/BATCH-07-CONNECTOR-ARCHITECTURE.md)
+- [Batch 8 Meta/X pilot configuration](docs/BATCH-08-META-X-PILOT.md)
 
 ## Launch security gates
 Verified email service; real external API permissions; rate/abuse controls; secure cookies and HTTPS; operator-reviewed legal notices; tenant isolation tests and backups; actual browser-based usability testing; subscription and production operations review. These are not substituted by a CI build.

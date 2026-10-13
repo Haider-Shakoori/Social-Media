@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState,type FormEvent} from "react";
+import {MetaXConnections} from "./meta-x-connections";
 type Workspace={id:string;name:string};
 type Brand={id:string;name:string};
 type Provider={id:string;name:string;rollout:string;canConnect:boolean;canPublish:boolean;canUseManualExport:boolean;
@@ -14,7 +15,7 @@ async function query<T>(path:string,method="GET",body?:unknown):Promise<T>{
  if(!response.ok)throw new Error(typeof data.message==="string"?data.message:"Request failed");
  return data as T;
 }
-export function TenantConnectors({tenantId,workspaces}:{tenantId:string;workspaces:Workspace[]}){
+export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;workspaces:Workspace[];role:string}){
  const [providers,setProviders]=useState<Provider[]>([]);
  const [brands,setBrands]=useState<Brand[]>([]);
  const [workspaceId,setWorkspaceId]=useState(""),[brandId,setBrandId]=useState("");
@@ -48,18 +49,20 @@ export function TenantConnectors({tenantId,workspaces}:{tenantId:string;workspac
   finally{setBusy(false);}
  }
  return <section className="mt-10 space-y-6 rounded-3xl border border-white/10 bg-[#102630] p-7">
-  <div><p className="text-xs font-bold tracking-widest text-emerald-300">CONNECTOR ARCHITECTURE · BATCH 7</p>
+  <div><p className="text-xs font-bold tracking-widest text-emerald-300">META + X PILOT · BATCH 8</p>
    <h2 className="mt-3 text-2xl font-bold">Platforms and manual publishing</h2>
-   <p className="mt-3 text-sm leading-7 text-slate-300">All ten networks are planned. Automatic account connection, scheduling and publishing are intentionally unavailable until independently authorized official integrations are released.</p>
+   <p className="mt-3 text-sm leading-7 text-slate-300">Facebook Pages, Instagram and X are the pilot platforms. Other social networks are deferred. Authorized test account linking is supported only when operator approval and credentials are configured; automatic publishing remains disabled.</p>
   </div>
   {error&&<p role="alert" className="rounded-xl border border-rose-300/30 p-4 text-sm text-rose-200">{error}</p>}
-  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
    {providers.map(p=><button type="button" onClick={()=>chooseNetwork(p.id)} key={p.id} className={"rounded-xl border p-4 text-left "+(p.id===network?"border-emerald-300/50 bg-emerald-300/10":"border-white/10")}>
     <h3 className="text-sm font-bold">{p.name}</h3><p className="mt-2 text-xs capitalize text-slate-400">{p.rollout.replaceAll("_"," ")}</p>
     <p className="mt-3 text-xs text-amber-200">No live publishing · Batch {p.rolloutBatch}</p>
    </button>)}
   </div>
   {selected&&<p className="rounded-xl border border-white/10 p-4 text-sm leading-7 text-slate-300"><strong className="text-white">{selected.name}</strong>: {selected.accountHint}. {selected.accessRequirement}. {selected.reason}.</p>}
+  {["OWNER","ADMIN"].includes(role)&&workspaceId&&brandId&&
+   <MetaXConnections tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
   <form onSubmit={e=>void createPackage(e)} className="grid gap-5 border-t border-white/10 pt-7 lg:grid-cols-2">
    <div className="space-y-4">
     <h3 className="text-lg font-bold">Manual export preparation</h3>

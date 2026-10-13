@@ -38,6 +38,11 @@ const catalog:readonly ProviderDescriptor[] = [
   contentCandidates:['text','image','video'],accessRequirement:'Written commercial API agreement and subreddit rules',costGate:'commercial_contract'},
 ] as const;
 export const PROVIDER_CATALOG:ReadonlyArray<ProviderDescriptor> = Object.freeze(catalog.map(item=>Object.freeze({...item,contentCandidates:Object.freeze([...item.contentCandidates])})));
+export const PILOT_NETWORKS = ['facebook','instagram','x'] as const;
+export function isPilotNetwork(value:string):value is typeof PILOT_NETWORKS[number] {
+ return (PILOT_NETWORKS as readonly string[]).includes(value);
+}
+export const PILOT_PROVIDER_CATALOG = PROVIDER_CATALOG.filter(p=>isPilotNetwork(p.id));
 const byId:ReadonlyMap<SocialNetwork,ProviderDescriptor> = new Map(PROVIDER_CATALOG.map(item=>[item.id,item]));
 export function isSocialNetwork(value:string):value is SocialNetwork {
  return (SOCIAL_NETWORKS as readonly string[]).includes(value);
@@ -59,7 +64,7 @@ export function inspectProvider(id:SocialNetwork,policy?:ProviderPolicySnapshot)
   policy?.operatorEnabled&&policy?.apiApproved&&policy?.productionVerified&&
   (descriptor.costGate!=='operator_budget'&&descriptor.costGate!=='commercial_contract'||policy?.costApproved)
  );
- return { ...descriptor,rollout,canConnect:false,canPublish:false,canUseManualExport:rollout!=='disabled'&&rollout!=='restricted',
+ return { ...descriptor,rollout,canConnect:false,canPublish:false,canUseManualExport:isPilotNetwork(id)&&rollout!=='disabled'&&rollout!=='restricted',
    productionPrerequisitesMet:isProductionReady,
    reason:rollout==='restricted'?'Provider access restricted':
      rollout==='disabled'?'Provider disabled by operator':
@@ -69,6 +74,7 @@ export function inspectProvider(id:SocialNetwork,policy?:ProviderPolicySnapshot)
 export type ManualExportInput = {caption:string;contentType:DraftContentType;mediaUrls:readonly string[];destinationNote?:string};
 export function buildManualExport(network:SocialNetwork,input:ManualExportInput){
  const descriptor=getProviderDescriptor(network);
+ if(!isPilotNetwork(network))throw new Error('Network deferred beyond the Meta/X pilot');
  if(!descriptor.contentCandidates.includes(input.contentType)){
   throw new Error('Content type is not a planned format for this provider');
  }

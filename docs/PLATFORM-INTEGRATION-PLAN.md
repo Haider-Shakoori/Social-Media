@@ -2,7 +2,7 @@
 _Date reviewed: 2026-10-14. Technical plan, not proof of approved API credentials or production availability._
 
 ## What "included" means
-All ten networks are first-class targets of the unified editor and integration status page. Inclusion in the roadmap is **not** an offer of authorized production automatic publishing. Only enable a live adapter after the developer app, provider terms, commercial permission, appropriate account access, exact OAuth scope, supported media formats, and API cost are actually verified. Where those gates fail, use an explicit copy/download/manual-publishing experience.
+The first active pilot is Facebook Pages, Instagram professional accounts and X. Seven other networks remain documented for future phases, but are disabled in the current tenant connector experience. Inclusion in the roadmap is **not** an offer of authorized production automatic publishing. Only enable a live adapter after the developer app, provider terms, commercial permission, appropriate account access, exact OAuth scope, supported media formats, and API cost are actually verified. Where those gates fail, use an explicit copy/download/manual-publishing experience.
 
 ## Release status vocabulary
 - `planned`: roadmap only; no live adapter.
@@ -71,7 +71,7 @@ The current repository is **pre-launch**. ALL production integrations must remai
 - **Fallback:** location-specific posting content/asset pack.
 - **Official references:** https://developers.google.com/my-business/content/basic-setup and https://developers.google.com/my-business/content/posts-data
 
-### X (formerly Twitter) — Batch 26
+### X (formerly Twitter) — Batch 08 connection pilot; Batch 26 advanced features
 - **Accounts:** OAuth-authorized X accounts with permitted developer access.
 - **Target features:** text, supported image/video where authorized, post ID reconciliation, duplicate prevention and opt-in delivery budget.
 - **Gates:** verify current official X API terms, credentials, post endpoints, quotas **and metered billing before ANY live call**. Configure spend cap, kill switch and explicit operator payment approval. Under the default VPS-only cost plan it stays manual-only.

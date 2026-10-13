@@ -374,10 +374,11 @@ const providerDb=new PrismaClient();
 try {
   let result=await call('GET','/tenants/'+idB+'/providers',undefined,b.cookie);
   status(result,200,'tenant member sees catalog');
-  assert.equal(result.data.providers.length,10,'ten networks must be in the catalog');
+  assert.equal(result.data.providers.length,3,'Meta and X only are active in pilot');
+  assert.equal(result.data.deferredProviders.length,7,'seven networks remain deferred');
   assert.ok(result.data.providers.every(p=>p.canPublish===false&&p.canConnect===false));
   assert.ok(result.data.providers.some(p=>p.id==='x'&&p.rollout==='manual_only'));
-  assert.ok(result.data.providers.some(p=>p.id==='google_business_profile'));
+  assert.ok(result.data.deferredProviders.some(p=>p.id==='google_business_profile'));
   status(await call('GET','/tenants/'+idB+'/providers',undefined,aCookie),404,'another tenant cannot enumerate provider settings');
   status(await call('GET','/tenants/'+idB+'/providers'),401,'unauthenticated provider access prohibited');
   status(await call('GET','/platform/providers',undefined,b.cookie),403,'tenant owner is not platform admin');
@@ -395,17 +396,17 @@ try {
   status(await call('GET',base,undefined,c.cookie),404,'removed member cannot view a brand catalog');
 
   const pkg={
-    network:'youtube',contentType:'video',caption:'  Independent publishing demo  ',
+    network:'facebook',contentType:'video',caption:'  Independent publishing demo  ',
     mediaUrls:['https://example.com/assets/video.mp4'],destinationNote:'Check channel settings manually'
   };
   result=await call('POST',base+'/manual-package',pkg,b.cookie);
   status(result,201,'authorized tenant owner builds manual package');
-  assert.equal(result.data.package.network,'youtube');
+  assert.equal(result.data.package.network,'facebook');
   assert.equal(result.data.package.caption,'Independent publishing demo');
   assert.equal(result.data.package.automaticallyPublished,false);
   assert.equal(result.data.package.publishing,'MANUAL_ONLY');
   status(await call('POST',base+'/manual-package',pkg,aCookie),404,'cross-tenant manual package rejected');
-  status(await call('POST',base+'/manual-package',{...pkg,contentType:'text'},b.cookie),400,'unsupported planned format rejected');
+  status(await call('POST',base+'/manual-package',{...pkg,contentType:'pin'},b.cookie),400,'unsupported planned format rejected');
   status(await call('POST',base+'/manual-package',{...pkg,mediaUrls:['http://unsafe.example/image.jpg']},b.cookie),400,'non-HTTPS media rejected');
   status(await call('POST',base+'/manual-package',{...pkg,network:'unlisted_social_network'},b.cookie),400,'unknown provider rejected');
 
@@ -426,9 +427,9 @@ try {
   assert.equal(result.data.providers.find(x=>x.id==='x').canPublish,false,'tenant still cannot publish');
   result=await call('PATCH','/platform/providers/x',{rolloutState:'MANUAL_ONLY',operatorEnabled:false,notes:'No paid API connection'},b.cookie);
   status(result,200,'operator can restore manual fallback');
-  status(await call('PATCH','/platform/providers/youtube',{rolloutState:'DISABLED',operatorEnabled:false},b.cookie),200,'operator emergency-disable');
+  status(await call('PATCH','/platform/providers/facebook',{rolloutState:'DISABLED',operatorEnabled:false},b.cookie),200,'operator emergency-disable');
   status(await call('POST',base+'/manual-package',pkg,b.cookie),403,'disabled provider cannot generate manual packages');
-  status(await call('PATCH','/platform/providers/youtube',{rolloutState:'PLANNED',operatorEnabled:false},b.cookie),200,'operator restores planned manual packaging');
+  status(await call('PATCH','/platform/providers/facebook',{rolloutState:'PLANNED',operatorEnabled:false},b.cookie),200,'operator restores planned manual packaging');
   result=await call('GET','/platform/operations/audit',undefined,b.cookie);
   status(result,200,'operator audit query');
   assert.ok(result.data.events.some(x=>x.action==='provider.policy.update'));
@@ -436,8 +437,94 @@ try {
   const count=await providerDb.socialProviderPolicy.count();
   assert.equal(count,10,'seeded policy records');
   assert.equal(await providerDb.socialConnection.count(),0,'no simulated live sessions created');
+  status(await call('POST',base+'/manual-package',{...pkg,network:'youtube'},b.cookie),403,'future network not active');
+  status(await call('PATCH','/platform/providers/youtube',{rolloutState:'TESTING',operatorEnabled:false},b.cookie),403,'deferred platform cannot be enabled');
   console.log('PASS: provider policies, manual export, non-admin denial, tenant isolation, blocked live publishing.');
 }finally{
   await providerDb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
   await providerDb.$disconnect();
+}
+
+
+// Batch 8: Only Meta and X may be considered for pilot OAuth; no API/paid service contacted.
+{
+ const r=await call('GET','/tenants/'+idB+'/providers',undefined,b.cookie);
+ status(r,200,'only Meta/X pilot catalog visible');
+ assert.deepEqual(new Set(r.data.providers.map(p=>p.id)),new Set(['instagram','facebook','x']));
+ assert.equal(r.data.deferredProviders.length,7,'seven future integrations deferred');
+ const list=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,b.cookie);
+ status(list,200,'existing brand available');
+ const bOne=list.data.brands.find(x=>x.name==='Brand One');
+ assert.ok(bOne?.id);
+ const base='/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+bOne.id+'/social';
+ let result=await call('GET',base+'/readiness',undefined,b.cookie);
+ status(result,200,'owner can view pilot credentials readiness');
+ assert.deepEqual(new Set(result.data.providers.map(p=>p.network)),new Set(['meta','x']));
+ assert.ok(result.data.providers.every(p=>p.canPublish===false));
+ assert.equal(JSON.stringify(result.data).includes('encryptedCredentials'),false);
+ status(await call('GET',base+'/readiness',undefined,aCookie),404,'other tenant cannot inspect social OAuth state');
+ status(await call('GET',base+'/readiness'),401,'unauthed readiness hidden');
+ status(await call('POST',base+'/oauth/meta/start',{},aCookie),404,'cross-tenant OAuth start rejected');
+ status(await call('POST',base+'/oauth/meta/start',{},b.cookie),503,'no Meta credentials/provider approval blocks OAuth start');
+ status(await call('POST',base+'/oauth/x/start',{},b.cookie),503,'no paid X budget or authorized API access blocks OAuth');
+ status(await call('POST',base+'/oauth/youtube/start',{},b.cookie),400,'deferred provider cannot initiate OAuth');
+ status(await call('GET','/social/oauth/attempts/00000000-0000-4000-8000-000000000001/accounts',undefined,b.cookie),404,'unknown one-time attempt inaccessible');
+ const cancelled=await call('GET','/social/oauth/meta/callback?error=access_denied',undefined,b.cookie);
+ assert.equal(cancelled.response.status,303,'OAuth cancellation redirects to safe dashboard');
+ const destination=new URL(cancelled.response.headers.get('location'));
+ assert.equal(destination.pathname,'/dashboard');
+ assert.equal(destination.searchParams.has('code'),false,'authorization code never exposed');
+ assert.equal(destination.searchParams.has('state'),false,'state never exposed');
+
+ status(await call('POST',base+'/accounts/00000000-0000-4000-8000-000000000001/disconnect',{},b.cookie),404,'unknown account disconnect rejected');
+ const oauthDb=new PrismaClient();
+ const {seal,randomUrlToken,tokenHash}=require('../dist/social-oauth/oauth-crypto.js');
+ const user=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
+ try{
+  await oauthDb.socialProviderPolicy.update({where:{network:'facebook'},data:{rolloutState:'TESTING',operatorEnabled:true}});
+  const started=await call('POST',base+'/oauth/meta/start',{},b.cookie);
+  status(started,201,'operator-authorized Meta test OAuth initiation is generated locally');
+  const authUrl=new URL(started.data.authorizationUrl);
+  assert.equal(authUrl.hostname,'www.facebook.com');
+  assert.ok(authUrl.searchParams.has('state'));
+  assert.ok(!JSON.stringify(started.data).includes('test-only-not-a-real-secret'));
+  const session=await oauthDb.session.findUniqueOrThrow({where:{tokenHash:tokenHash(b.cookie.split('=')[1])}});
+  const fakeState=randomUrlToken();
+  const attempt=await oauthDb.socialOAuthAttempt.create({data:{
+   stateHash:tokenHash(fakeState),network:'meta',brandId:bOne.id,sessionId:session.id,userId:user,
+   stateUsedAt:new Date(),expiresAt:new Date(Date.now()+600000),
+   pendingCipher:seal({accounts:[{id:'synthetic-facebook-page-'+stamp,platform:'facebook',
+    name:'Test Page (synthetic)',accessToken:'not-a-real-provider-token',scopes:['pages_manage_posts']}]})
+  }});
+  status(await call('GET','/social/oauth/attempts/'+attempt.id+'/accounts',undefined,aCookie),404,'OAuth account picker is bound to initiating user/session');
+  result=await call('GET','/social/oauth/attempts/'+attempt.id+'/accounts',undefined,b.cookie);
+  status(result,200,'initiating session may view returned account identities');
+  assert.equal(result.data.accounts.length,1);
+  assert.equal(JSON.stringify(result.data).includes('not-a-real-provider-token'),false,'tokens never exposed in account selection');
+  result=await call('POST','/social/oauth/attempts/'+attempt.id+'/select',{
+    accountId:'synthetic-facebook-page-'+stamp,platform:'facebook'},b.cookie);
+  status(result,201,'session-bound one-time selection stores encrypted token');
+  assert.equal(result.data.canPublish,false,'account linking cannot publish');
+  const linked=await oauthDb.socialConnection.findUniqueOrThrow({where:{id:result.data.account.id}});
+  assert.ok(linked.encryptedCredentials?.startsWith('v1.'));
+  assert.equal(linked.encryptedCredentials.includes('not-a-real-provider-token'),false);
+  assert.equal(linked.state,'CONNECTED');
+  status(await call('POST','/social/oauth/attempts/'+attempt.id+'/select',{
+    accountId:'synthetic-facebook-page-'+stamp,platform:'facebook'},b.cookie),404,'selection replay forbidden');
+  result=await call('GET',base+'/readiness',undefined,b.cookie);
+  status(result,200,'redacted connected accounts visible to owner');
+  assert.equal(JSON.stringify(result.data).includes('not-a-real-provider-token'),false);
+  result=await call('POST',base+'/accounts/'+linked.id+'/disconnect',{},b.cookie);
+  status(result,201,'local disconnect clears tokens');
+  const removed=await oauthDb.socialConnection.findUniqueOrThrow({where:{id:linked.id}});
+  assert.equal(removed.encryptedCredentials,null,'stored access tokens cleared');
+  assert.equal(removed.state,'DISCONNECTED');
+  status(await call('POST',base+'/accounts/'+linked.id+'/disconnect',{},aCookie),404,'foreign tenant cannot disconnect');
+  console.log('PASS: Meta OAuth state, encrypted account selection, replay prevention, quotas, redaction and disconnect.');
+ }finally{
+  await oauthDb.socialProviderPolicy.update({where:{network:'facebook'},data:{rolloutState:'PLANNED',operatorEnabled:false}});
+  await oauthDb.$disconnect();
+ }
+
+ console.log('PASS: Meta/X-only pilot, no public publishing, missing credential/budget gates and tenant boundaries.');
 }

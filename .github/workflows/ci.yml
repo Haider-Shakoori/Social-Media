@@ -36,6 +36,13 @@ jobs:
       REGISTRATION_ENABLED: 'true'
       CMS_PUBLISHING_ENABLED: 'true'
       CMS_PUBLIC_ENABLED: 'true'
+      SOCIAL_TOKEN_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+      META_CONNECT_ENABLED: 'true'
+      META_APP_ID: 'test-only-not-a-real-app'
+      META_APP_SECRET: 'test-only-not-a-real-secret'
+      META_REDIRECT_URI: 'http://localhost:4000/api/v1/social/oauth/meta/callback'
+      X_CONNECT_ENABLED: 'false'
+      X_API_BUDGET_APPROVED: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
