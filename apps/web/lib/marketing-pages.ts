@@ -20,7 +20,7 @@ export const marketingPages: Record<string, MarketingPageContent> = {
       { symbol: "▤", title: "Clear reporting", description: "Show the metrics networks actually expose, with no invented growth predictions." },
     ],
     process: [
-      { title: "Define the brand", description: "Give the platform your audience, tone, products, languages, and restricted topics." },
+      { title: "Define the brand", description: "Give the platform your audience, tone, products, English copy preferences, and restricted topics." },
       { title: "Plan and create", description: "Generate draft content and arrange a publishable weekly calendar." },
       { title: "Approve and publish", description: "Review every version, then publish only to eligible connected accounts." },
     ],
@@ -33,8 +33,8 @@ export const marketingPages: Record<string, MarketingPageContent> = {
     highlights: [
       { symbol: "✦", title: "Caption variations", description: "Draft concise, friendly, promotional, or informative versions tailored to the platform." },
       { symbol: "▧", title: "Image studio", description: "Combine free-tier image generation with precise server-rendered typography and templates." },
-      { symbol: "⌘", title: "Brand memory", description: "Use per-brand voice, colors, audience, language, and approved visual assets." },
-      { symbol: "⇄", title: "Multilingual drafts", description: "Plan for English, Dari, Pashto, and Arabic with a deliberate review step." },
+      { symbol: "⌘", title: "Brand memory", description: "Use per-brand voice, colors, audience, and approved visual assets." },
+      { symbol: "⇄", title: "English-first drafts", description: "Create and review clear English captions for the Meta and X pilot." },
       { symbol: "◴", title: "Usage budgets", description: "Track AI credits and decline generation when free-tier or account limits are reached." },
       { symbol: "✓", title: "Human review", description: "Require verification of claims, text accuracy, prices, and sensitive religious content." },
     ],
@@ -124,7 +124,7 @@ export const solutions: Record<string, MarketingPageContent> = {
     summary: "Turn a few brand guidelines into a repeatable content routine for promotions, occasions, and announcements, with the business owner approving each final post.",
     highlights: [
       { symbol: "✦", title: "Simple briefs", description: "Create content by describing a product, offer, occasion, or announcement." },
-      { symbol: "▧", title: "Branded visuals", description: "Keep colors and logos consistent and render multilingual text accurately." },
+      { symbol: "▧", title: "Branded visuals", description: "Keep colors and logos consistent and render English headlines and captions accurately." },
       { symbol: "✓", title: "Owner approval", description: "Always see what's going out and when, before any eligible network publishes it." },
     ],
     process: [

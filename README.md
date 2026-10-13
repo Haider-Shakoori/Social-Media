@@ -17,7 +17,7 @@ Our production publishing design requires verified, authorized official social A
 - Batch 1: Monorepo, API, database/Redis groundwork, Prisma and safe connector worker — PR #1.
 - Batch 2: Responsive marketing website, pricing, guides, truthful integration pages and SEO foundations — PR #2.
 - Batch 3: Registered users, verified email, hashed password/session tokens, role-scoped tenants/workspaces, schema migrations, auth UI and live CI e2e tests — PR #3.
-- Batch 4: Multilingual brands, tenant invitations, scoped team permissions — PR #4.
+- Batch 4: Brand profiles, tenant invitations, scoped team permissions — PR #4.
 - Batch 5: Trials, quotas and manual offline billing, with no active payment gateway — PR #5.
 - Batch 6: Protected platform console and publication-gated CMS — PR #7 (stacked after roadmap PR #6).
 - Batch 7: Ten-network typed connector catalog, tenant-scoped manual export, audited platform policy controls and fail-closed publishing worker — PR #8.
@@ -44,3 +44,6 @@ Verified email service; real external API permissions; rate/abuse controls; secu
 
 ## Accelerated Batches 09-16
 AI creative templates, versioned brand content, manual calendar reminders, human approvals, independent notifications, due reconciliation, account protection and evidence-only analytics are implemented in stacked review branches. These are NOT live provider publishing integrations. See [limitations and QA](docs/BATCH-09-16-DELIVERY.md).
+
+## Language decision
+The international pilot is English only. No translation or RTL options are active. New brand profiles, captions, drafts and CMS entries use English; existing historical records are preserved.
