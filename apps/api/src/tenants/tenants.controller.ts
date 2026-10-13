@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard, type AuthRequest } from '../security/auth.guard';
 import {validated,tenantInput,workspaceInput,roleInput} from '../security/dto';
 import { TenantsService } from './tenants.service';
@@ -26,4 +26,9 @@ export class TenantsController{
   changeRole(@Req() req:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) tenantId:string,@Param('userId',new ParseUUIDPipe()) userId:string,@Body() body:unknown){
     return this.tenants.updateRole(req.authUserId,tenantId,userId,validated(roleInput,body).role);
   }
+  @Delete(':tenantId/members/:userId')
+  removeMember(@Req() req:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) tenantId:string,@Param('userId',new ParseUUIDPipe()) userId:string){
+    return this.tenants.removeMember(req.authUserId,tenantId,userId);
+  }
+
 }

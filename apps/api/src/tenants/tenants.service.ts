@@ -68,4 +68,20 @@ export class TenantsService {
     const updated=await this.db.membership.update({where:{id:target.id},data:{role},select:{userId:true,role:true}});
     return {member:updated};
   }
+  async removeMember(userId:string,tenantId:string,targetUserId:string) {
+    const operator=await this.membership(tenantId,userId);
+    this.ensureRole(operator.role,['OWNER']);
+    if(targetUserId===userId)throw new ForbiddenException('An owner cannot remove themselves');
+    await this.db.$transaction(async(tx)=>{
+      const target=await tx.membership.findUnique({where:{tenantId_userId:{tenantId,userId:targetUserId}}});
+      if(!target)throw new NotFoundException('Member not found');
+      if(target.role==='OWNER')throw new ForbiddenException('Owner membership cannot be removed');
+      await tx.brandMember.deleteMany({where:{
+        userId:targetUserId,brand:{workspace:{tenantId}},
+      }});
+      await tx.membership.delete({where:{id:target.id}});
+    });
+    return {message:'Team member removed and organization brand access revoked'};
+  }
+
 }
