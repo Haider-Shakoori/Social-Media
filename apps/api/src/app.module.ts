@@ -4,8 +4,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RequestSecurityMiddleware } from './security/request-security';
 import { AuthModule } from './auth/auth.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { BillingModule } from './billing/billing.module';
 @Module({
-  imports:[PrismaModule,AuthModule,TenantsModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {

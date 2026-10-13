@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from './access.service';
+import { EntitlementsService } from '../billing/entitlements.service';
 import type { z } from 'zod';
 import { brandInput, brandPatchInput } from '../security/dto';
 type BrandInput=z.infer<typeof brandInput>;
@@ -12,7 +13,7 @@ const fields={
 } as const;
 @Injectable()
 export class BrandsService {
-  constructor(private readonly db:PrismaService,private readonly access:AccessService){}
+  constructor(private readonly db:PrismaService,private readonly access:AccessService,private readonly quotas:EntitlementsService){}
   async list(userId:string,tenantId:string,workspaceId:string) {
     const {role}=await this.access.workspace(tenantId,workspaceId,userId);
     const brands=await this.db.brand.findMany({
@@ -25,8 +26,11 @@ export class BrandsService {
   async create(userId:string,tenantId:string,workspaceId:string,input:BrandInput){
     const {role}=await this.access.workspace(tenantId,workspaceId,userId);
     this.access.requireRole(role,['OWNER','ADMIN']);
-    const brand=await this.db.brand.create({data:{workspaceId,...input},select:fields});
-    return {brand};
+    return this.quotas.inTransaction(tenantId,async(tx,s)=>{
+      await this.quotas.assertCount(tx,s,'BRANDS');
+      const brand=await tx.brand.create({data:{workspaceId,...input},select:fields});
+      return {brand};
+    });
   }
   async update(userId:string,tenantId:string,workspaceId:string,brandId:string,input:BrandPatch){
     await this.access.brand(tenantId,workspaceId,brandId,userId,['OWNER','ADMIN','EDITOR']);

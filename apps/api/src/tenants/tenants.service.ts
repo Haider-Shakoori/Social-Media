@@ -1,9 +1,10 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { MembershipRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntitlementsService } from '../billing/entitlements.service';
 @Injectable()
 export class TenantsService {
-  constructor(private readonly db:PrismaService){}
+  constructor(private readonly db:PrismaService,private readonly quotas:EntitlementsService){}
   async list(userId:string){
     const memberships=await this.db.membership.findMany({
       where:{userId},include:{tenant:{select:{id:true,slug:true,name:true,createdAt:true}}},
@@ -13,16 +14,26 @@ export class TenantsService {
   }
   async create(userId:string,name:string,slug:string){
     try {
-      const tenant=await this.db.tenant.create({
-        data:{
-          name,slug,memberships:{create:{userId,role:'OWNER'}},
-          workspaces:{create:{name:'Main Workspace',timezone:'UTC'}},
-        },
-        select:{id:true,name:true,slug:true,workspaces:{select:{id:true,name:true,timezone:true}}},
+      const tenant=await this.db.$transaction(async tx=>{
+        const plan=await tx.plan.findUnique({where:{code:'trial'}});
+        if(!plan||!plan.enabled||plan.trialDays<1)throw new ConflictException('Trial plan is not available');
+        const now=new Date(),end=new Date(now.getTime()+plan.trialDays*86400000);
+        const created=await tx.tenant.create({
+          data:{name,slug,memberships:{create:{userId,role:'OWNER'}},
+            workspaces:{create:{name:'Main Workspace',timezone:'UTC'}}},
+          select:{id:true,name:true,slug:true,workspaces:{select:{id:true,name:true,timezone:true}}},
+        });
+        await tx.subscription.create({data:{tenantId:created.id,planId:plan.id,state:'TRIALING',
+          cycle:'MONTHLY',periodStart:now,periodEnd:end,trialEndsAt:end,
+          maxBrands:plan.maxBrands,maxSeats:plan.maxSeats,maxConnections:plan.maxConnections,
+          monthlyAiText:plan.monthlyAiText,monthlyAiImage:plan.monthlyAiImage,
+          monthlyScheduledPosts:plan.monthlyScheduledPosts,
+        }});
+        return created;
       });
       return {tenant};
     } catch(error){
-      if(typeof error==='object'&&error!==null&&'code' in error&&error.code==='P2002')throw new ConflictException('Workspace slug is already in use');
+      if(typeof error==='object'&&error!==null&&'code' in error&&error.code==='P2002')throw new ConflictException('Workspace slug already in use');
       throw error;
     }
   }
