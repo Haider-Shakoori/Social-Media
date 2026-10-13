@@ -19,10 +19,13 @@ const snapshot=(plan:{
  monthlyAiText:plan.monthlyAiText,monthlyAiImage:plan.monthlyAiImage,monthlyScheduledPosts:plan.monthlyScheduledPosts,
 });
 function futureDate(base:Date,cycle:'MONTHLY'|'YEARLY'){
-  const d=new Date(base);
-  if(cycle==='MONTHLY')d.setUTCMonth(d.getUTCMonth()+1);
-  else d.setUTCFullYear(d.getUTCFullYear()+1);
-  return d;
+  // Clamp to the last day of the target month (Jan 31 => Feb 28/29).
+  const step=cycle==='MONTHLY'?1:12;
+  const target=new Date(Date.UTC(base.getUTCFullYear(),base.getUTCMonth()+step,1,
+    base.getUTCHours(),base.getUTCMinutes(),base.getUTCSeconds(),base.getUTCMilliseconds()));
+  const last=new Date(Date.UTC(target.getUTCFullYear(),target.getUTCMonth()+1,0)).getUTCDate();
+  target.setUTCDate(Math.min(base.getUTCDate(),last));
+  return target;
 }
 @Injectable()
 export class BillingService {

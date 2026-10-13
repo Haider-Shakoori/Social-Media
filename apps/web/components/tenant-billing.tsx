@@ -11,7 +11,13 @@ type BillingData={
  invoices:{id:string;number:string;amountMinor:number;currency:string;status:string;issuedAt:string}[];
  payments:{id:string;reference:string;amountMinor:number;currency:string;state:string;createdAt:string}[];
 };
-const format=(value:number,currency:string)=>new Intl.NumberFormat("en-US",{style:"currency",currency,maximumFractionDigits:2}).format(value/100);
+const format=(value:number,currency:string)=>{
+  try{
+    const formatter=new Intl.NumberFormat("en-US",{style:"currency",currency});
+    const digits=formatter.resolvedOptions().maximumFractionDigits;
+    return formatter.format(value/Math.pow(10,digits));
+  }catch{return currency+" "+value.toLocaleString();}
+};
 export function TenantBilling({tenantId,role}:{tenantId:string;role:string}){
  const [data,setData]=useState<BillingData|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(true);
  useEffect(()=>{
