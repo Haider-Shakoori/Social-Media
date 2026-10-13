@@ -19,8 +19,9 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AgencyModule } from './agency/agency.module';
 import { LaunchModule } from './readiness/launch.module';
 import { PreflightModule } from './preflight/preflight.module';
+import { XPilotModule } from './x-pilot/x.module';
 @Module({
-  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule,SchedulerModule,ProtectionModule,AnalyticsModule,AgencyModule,LaunchModule,PreflightModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule,SchedulerModule,ProtectionModule,AnalyticsModule,AgencyModule,LaunchModule,PreflightModule,XPilotModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {
