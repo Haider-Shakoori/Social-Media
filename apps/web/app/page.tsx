@@ -37,12 +37,12 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-[240px_minmax(0,1fr)_280px]">
             <div className="hidden border-r border-white/10 bg-[#0c1e27] p-6 lg:block">
               <p className="mb-5 text-xs font-bold uppercase tracking-widest text-slate-500">Workspace</p>
-              {["Overview","AI Content Studio","Content Calendar","Approval Center","Connected Accounts","Analytics"].map((label,i)=><div key={label} className={\`mb-2 rounded-xl px-4 py-3 text-sm \${i===2?"bg-emerald-300/10 font-semibold text-emerald-200":"text-slate-400"}\`}>{label}</div>)}
+              {["Overview","AI Content Studio","Content Calendar","Approval Center","Connected Accounts","Analytics"].map((label,i)=><div key={label} className={`mb-2 rounded-xl px-4 py-3 text-sm ${i===2?"bg-emerald-300/10 font-semibold text-emerald-200":"text-slate-400"}`}>{label}</div>)}
             </div>
             <div className="min-w-0 p-5 sm:p-7">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-emerald-300">October · sample calendar</p><h2 className="mt-2 text-2xl font-bold">Your content, organized.</h2></div><span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200">Approval-first</span></div>
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                {[{d:"Mon",n:"12",t:"Brand story",c:"draft"},{d:"Tue",n:"13",t:"Design review",c:"review"},{d:"Wed",n:"14",t:"Tips series",c:"ready"},{d:"Thu",n:"15",t:"Campaign",c:"draft"},{d:"Fri",n:"16",t:"Friday greeting",c:"review"},{d:"Sat",n:"17",t:"Product idea",c:"ready"}].map(p=><div key={p.d} className="min-h-32 rounded-2xl border border-white/10 bg-[#152f38] p-3 sm:p-4"><div className="flex items-center justify-between"><span className="text-xs text-slate-400">{p.d}</span><span className="text-xs font-bold text-slate-200">{p.n}</span></div><div className={\`mt-5 h-1.5 w-9 rounded-full \${p.c==="ready"?"bg-emerald-300":p.c==="review"?"bg-amber-300":"bg-cyan-300"}\`}/><p className="mt-2 text-xs font-semibold text-slate-100">{p.t}</p></div>)}
+                {[{d:"Mon",n:"12",t:"Brand story",c:"draft"},{d:"Tue",n:"13",t:"Design review",c:"review"},{d:"Wed",n:"14",t:"Tips series",c:"ready"},{d:"Thu",n:"15",t:"Campaign",c:"draft"},{d:"Fri",n:"16",t:"Friday greeting",c:"review"},{d:"Sat",n:"17",t:"Product idea",c:"ready"}].map(p=><div key={p.d} className="min-h-32 rounded-2xl border border-white/10 bg-[#152f38] p-3 sm:p-4"><div className="flex items-center justify-between"><span className="text-xs text-slate-400">{p.d}</span><span className="text-xs font-bold text-slate-200">{p.n}</span></div><div className={`mt-5 h-1.5 w-9 rounded-full ${p.c==="ready"?"bg-emerald-300":p.c==="review"?"bg-amber-300":"bg-cyan-300"}`}/><p className="mt-2 text-xs font-semibold text-slate-100">{p.t}</p></div>)}
               </div>
             </div>
             <div className="border-t border-white/10 bg-[#0b2029] p-6 lg:border-l lg:border-t-0">
@@ -57,7 +57,7 @@ export default function HomePage() {
     </section>
     <section className="border-y border-white/10 bg-[#0b1b25]/65 py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8">
       <SectionHeading eyebrow="A MORE TRANSPARENT PROCESS" title="Content you can trust yourself to approve." summary="AI speeds up the first draft. Your decisions, approved permissions, and platform limits determine what happens next."/>
-      <div className="mt-10 grid gap-4 md:grid-cols-3">{flow.map((item)=><article key={item.step} className={\`rounded-3xl border border-white/10 bg-gradient-to-br \${item.color} p-7\`}><span className="text-xs font-bold tracking-[.2em] text-emerald-300">{item.step}</span><h3 className="mt-8 text-xl font-bold">{item.name}</h3><p className="mt-3 text-sm leading-7 text-slate-300">{item.note}</p></article>)}</div>
+      <div className="mt-10 grid gap-4 md:grid-cols-3">{flow.map((item)=><article key={item.step} className={`rounded-3xl border border-white/10 bg-gradient-to-br ${item.color} p-7`}><span className="text-xs font-bold tracking-[.2em] text-emerald-300">{item.step}</span><h3 className="mt-8 text-xl font-bold">{item.name}</h3><p className="mt-3 text-sm leading-7 text-slate-300">{item.note}</p></article>)}</div>
     </div></section>
     <section className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
       <SectionHeading eyebrow="DESIGNED FOR REAL WORK" title="A calmer way to manage the details." summary="A connected workflow for content preparation, review, and supported publishing. Built for growing teams and client relationships."/>

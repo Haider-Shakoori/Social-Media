@@ -14,7 +14,7 @@ export default function PricingPage() {
     <PageHero eyebrow="SIMPLE PLANS, HONEST LIMITS" title="Plans designed around how teams actually publish." summary="Starter, Growth, and Agency are proposed plan structures. Final pricing, limits and payment availability will be announced after beta validation. No subscriptions can be purchased yet."/>
     <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
       <div className="grid gap-5 lg:grid-cols-3">
-        {plans.map(plan => <article key={plan.name} className={\`flex flex-col rounded-[28px] border p-7 sm:p-9 \${plan.featured?"border-emerald-300/45 bg-gradient-to-b from-[#174337] to-[#10262d]":"border-white/10 bg-[#10242e]"}\`}>
+        {plans.map(plan => <article key={plan.name} className={`flex flex-col rounded-[28px] border p-7 sm:p-9 ${plan.featured?"border-emerald-300/45 bg-gradient-to-b from-[#174337] to-[#10262d]":"border-white/10 bg-[#10242e]"}`}>
           {plan.featured?<span className="mb-6 self-start rounded-full bg-emerald-300 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-950">Planned popular</span>:<div className="mb-6 h-7"/>}
           <h2 className="text-3xl font-bold">{plan.name}</h2><p className="mt-2 text-sm text-slate-300">{plan.subtitle}</p>
           <p className="mt-8 text-2xl font-bold text-white">Pricing TBA</p><p className="mt-1 text-xs text-slate-400">No active billing · Preview only</p>

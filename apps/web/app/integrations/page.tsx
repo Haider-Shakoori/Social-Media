@@ -19,7 +19,7 @@ export default function IntegrationsPage() {
     <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {platformPlans.map((platform) => <article className="rounded-3xl border border-white/10 bg-[#102630] p-7" key={platform.name}>
-          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-bold text-white">{platform.name}</h2><span className={\`rounded-full border px-3 py-1.5 text-xs font-bold \${styles[platform.status]}\`}>{platform.status}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-bold text-white">{platform.name}</h2><span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${styles[platform.status]}`}>{platform.status}</span></div>
           <p className="mt-4 text-sm font-semibold text-emerald-300">{platform.scope}</p><p className="mt-3 text-sm leading-7 text-slate-400">{platform.detail}</p>
         </article>)}
       </div>
