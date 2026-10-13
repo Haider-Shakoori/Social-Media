@@ -1,9 +1,15 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
-
+import { RequestSecurityMiddleware } from './security/request-security';
+import { AuthModule } from './auth/auth.module';
+import { TenantsModule } from './tenants/tenants.module';
 @Module({
-  imports: [PrismaModule],
-  controllers: [HealthController],
+  imports:[PrismaModule,AuthModule,TenantsModule],
+  controllers:[HealthController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer:MiddlewareConsumer):void {
+    consumer.apply(RequestSecurityMiddleware).forRoutes('*');
+  }
+}
