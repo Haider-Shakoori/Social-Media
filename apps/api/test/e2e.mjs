@@ -192,6 +192,8 @@ try {
   response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
   assert.equal(response.data.subscription.state,'EXPIRED','status evaluated dynamically, not via cron');
   status(await call('POST',brandBase,{name:'Expired Trial Brand',locale:'en'},b.cookie),403,'expired trial denies brand creation');
+  const waitingToken=await mailboxToken(c.email,'Invitation to','invite/accept');
+  status(await call('POST','/invitations/accept',{token:waitingToken},c.cookie),403,'expired subscription blocks pending invite acceptance');
   await assert.rejects(quota.consume(idB,'AI_TEXT',1),'expired trial denies credits');
 
   const platformId=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
@@ -225,6 +227,9 @@ try {
   response=await call('POST','/platform/billing/payments',{invoiceId,reference:'CASH-'+stamp,note:'Cash received test'},b.cookie);
   status(response,201,'admin records pending payment');const paymentId=response.data.payment.id;
   assert.equal(response.data.payment.state,'PENDING');
+  const administratorDetails=await call('GET','/platform/billing/tenants/'+idB,undefined,b.cookie);
+  status(administratorDetails,200,'admin can reload persisted pending payment records');
+  assert.equal(administratorDetails.data.payments.find(p=>p.id===paymentId)?.state,'PENDING');
   response=await call('GET','/billing/tenants/'+idB,undefined,b.cookie);
   assert.equal(response.data.invoices[0].status,'ISSUED','recording does not mark paid');
   response=await call('POST','/platform/billing/payments/'+paymentId+'/decision',{decision:'VERIFY'},b.cookie);
