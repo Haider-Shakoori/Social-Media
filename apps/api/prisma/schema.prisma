@@ -62,6 +62,8 @@ model User {
   memberships Membership[]
   sessions Session[]
   emailTokens EmailToken[]
+  sentInvitations TenantInvitation[] @relation("SentInvitations")
+  brandAccess BrandMember[]
 
   @@map("users")
 }
@@ -74,6 +76,7 @@ model Tenant {
   updatedAt   DateTime     @updatedAt @map("updated_at")
   memberships Membership[]
   workspaces  Workspace[]
+  invitations TenantInvitation[]
 
   @@map("tenants")
 }
@@ -114,6 +117,17 @@ model Brand {
   workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   connections SocialConnection[]
   posts       ContentPost[]
+  members     BrandMember[]
+  industry    String?  @db.VarChar(120)
+  description String?  @db.Text
+  website     String?  @db.VarChar(500)
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  primaryColor String  @default("#6ee7b7") @map("primary_color") @db.VarChar(7)
+  targetAudience String? @map("target_audience") @db.Text
+  tone         String? @db.VarChar(120)
+  languages    String[] @default(["en"])
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  archivedAt   DateTime? @map("archived_at")
 
   @@index([workspaceId])
   @@map("brands")
@@ -223,4 +237,38 @@ model EmailToken {
 
   @@index([userId, purpose, expiresAt])
   @@map("email_tokens")
+}
+
+
+model TenantInvitation {
+  id           String @id @default(uuid()) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  email        String @db.VarChar(255)
+  role         MembershipRole
+  tokenHash    String @unique @map("token_hash") @db.Char(64)
+  invitedById  String @map("invited_by_id") @db.Uuid
+  expiresAt    DateTime @map("expires_at")
+  acceptedAt   DateTime? @map("accepted_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  tenant       Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  invitedBy    User @relation("SentInvitations",fields:[invitedById],references:[id],onDelete:Restrict)
+
+  @@unique([tenantId,email])
+  @@index([email,expiresAt])
+  @@map("tenant_invitations")
+}
+
+model BrandMember {
+  id       String @id @default(uuid()) @db.Uuid
+  brandId  String @map("brand_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  role     MembershipRole
+  createdAt DateTime @default(now()) @map("created_at")
+  brand    Brand @relation(fields:[brandId],references:[id],onDelete:Cascade)
+  user     User @relation(fields:[userId],references:[id],onDelete:Cascade)
+
+  @@unique([brandId,userId])
+  @@index([userId])
+  @@map("brand_members")
 }
