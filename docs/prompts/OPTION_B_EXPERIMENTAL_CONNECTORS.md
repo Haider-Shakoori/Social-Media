@@ -5,7 +5,7 @@ This prompt intentionally includes the entire product specification. Use it as i
 
 ## Connection strategy — mandatory
 
-The customer wants to investigate relayWA-style connector modules that can maintain customer-authorized login sessions without buying an intermediary social API subscription. A Baileys-equivalent protocol does NOT exist for every social network, and a working open-source project does not imply commercial permission. Build adapters and an explicit technical/policy feasibility matrix first. Restrict self-hosted unofficial sessions to owned test accounts and controlled experiments unless the platform permits that specific automated use.
+The product considers independent connector modules that can maintain customer-authorized login sessions without buying an intermediary social API subscription. A Baileys-equivalent protocol does NOT exist for every social network, and a working open-source project does not imply commercial permission. Build adapters and an explicit technical/policy feasibility matrix first. Restrict self-hosted unofficial sessions to owned test accounts and controlled experiments unless the platform permits that specific automated use.
 
 Research Instagram, Facebook, LinkedIn, TikTok, X and Reddit separately. For each, document current open-source library maturity, protocol/browser dependence, authenticated session handling, media capabilities, authorization mechanism, ToS restrictions, commercial eligibility, rate limits, expected resource consumption, challenge/recovery behavior, operational breakage and whether it may be activated. Status enum: permitted-and-verified, experimental-with-consent, manual-only, disabled-policy, unsupported.
 
@@ -22,14 +22,14 @@ Act as principal software architect, senior full-stack TypeScript developer, UI/
 
 The application has three complete surfaces: (1) public marketing website and help center; (2) tenant/customer application for brands and agencies; (3) a separate platform super-admin. The user intends to pay only for an existing VPS initially. No surprise paid API or software usage.
 
-### Confirmed relayWA-equivalent stack
+### Independent project stack
 
 - Node.js 22+, TypeScript, NestJS 12 for API, Next.js 16 with React 19 for web.
 - PostgreSQL 17, Redis 8, reliable persistent job queues using BullMQ or an equivalent Redis-backed integration.
 - pnpm monorepo, modular monolith with isolated workers rather than prematurely distributed microservices.
 - Docker Compose, Nginx, health checks and GitHub Actions.
-- Cloudflare Workers AI within its actual free quota, optional deterministic SVG/Sharp image templates, SMTP or provider free-tier transactional email, optional internal relayWA approval messaging adapter.
-- Match relayWA's architecture and development conventions while keeping a completely separate repository, database, service credentials, containers, volumes and tenant data.
+- Cloudflare Workers AI within its actual free quota, optional deterministic SVG/Sharp image templates, SMTP or provider free-tier transactional email, optional standalone approved WhatsApp Business Cloud API integration.
+- Maintain independent source code, databases, credentials, containers, volumes, messaging identity, and tenant data.
 - Use feature flags and provider adapters. Support configurable model and provider selection. Do not assume a free tier is unlimited.
 - No Laravel or PHP. No dependency on paid SaaS integrations for the initial controlled beta.
 
@@ -77,7 +77,7 @@ Store drafts, exact image assets, captions, hashtags, generated variants, prompt
 
 Parse natural language into explicit recurrence: brand, target destinations, day/time, IANA timezone, frequency, start/end, approval lead time, image requirement and format. Validate and ask for confirmation. Store instants in UTC and preserve timezone, handle DST and missed deadlines. Approval-before-deadline rule: approval authorizes the exact content; publish at scheduled time, not when approval arrives unless explicitly specified. Late approvals must follow an agreed reschedule policy.
 
-Approval channels: tenant dashboard (always), email through existing SMTP or available free provider, optional relayWA adapter for WhatsApp notifications and reply webhook. relayWA is an unofficial Baileys-based WhatsApp service: isolate it as experimental and never treat delivery as guaranteed, never share customer sessions, and fall back to email/dashboard. WhatsApp replies must include unique request ID (e.g. AGREE 1042) or interactive controls that uniquely map to requests. Validate recipient/sender, signatures, nonce/idempotency, expiry, tenant, version and destination. Do not accept ambiguous replies, replayed events or approval from unauthorized users. Signed email approval links need expiry and protections against forwards/interceptors. Keep immutable approval audit history.
+Approval channels: tenant dashboard (always), email through existing SMTP or available free provider, optional first-party-owned WhatsApp Business Cloud API notifications and replies only after Meta approval, distinct credentials and explicit user consent. Always fall back to in-app/email. WhatsApp replies must include unique request ID (e.g. AGREE 1042) or interactive controls that uniquely map to requests. Validate recipient/sender, signatures, nonce/idempotency, expiry, tenant, version and destination. Do not accept ambiguous replies, replayed events or approval from unauthorized users. Signed email approval links need expiry and protections against forwards/interceptors. Keep immutable approval audit history.
 
 Persistent queues: per-provider/account caps, safe backoff, dead-letter queue, distributed leases, restart recovery and publishing state reconciliation. Timeouts after an external network accepted content are ambiguous: never blindly retry and duplicate publication. Associate attempt ID, content version, destination account, response, remote ID, policy and trace. Pause when disconnected, permission expired, restricted, or rate-limited. Keep queue and dashboard functional independently of connector crashes.
 
@@ -96,7 +96,7 @@ Build protected modules:
 - Plans and manual billing: trials, prices, entitlements, renewals, receipts, discounts, subscriptions.
 - Provider registry: feature toggle, capability matrix, review/eligibility status, scopes, webhook health, incident status, connector stop switch.
 - AI providers: model selection, credentials stored securely, budgets, free allowances, failures and quotas.
-- WhatsApp/email: relayWA internal adapter configuration, SMTP, templates, delivery logs and fallback.
+- Notifications: own SMTP/email and in-app delivery, templates, delivery logs and optional independently approved WhatsApp Business Cloud API.
 - Queue/worker observability: in-flight, pending, failed, dead-letter, memory/concurrency, retries and per-account halt.
 - Account protection: aggregated restriction signals and emergency disable by tenant, provider or entire platform.
 - Website CMS: home sections, marketing navigation, FAQ, blog, pricing content, legal pages, SEO and translations.
@@ -116,7 +116,7 @@ Account safety: only act with customer authorization, review content, detect dup
 
 ### 10. Infrastructure, monitoring, testing and delivery
 
-Separate application from relayWA in containers, networks, secrets, data and operational lifecycle. Docker Compose for local and VPS; API/worker/web, PostgreSQL, Redis, object/media storage folder; reverse proxy; health/readiness; log rotation, resource limits, deployment rollback, backups. Use GitHub CI for install, lint, typecheck, tests, builds, security checks, migration validation and container config. Do not deploy or change the VPS without explicit authorization; Desktop Commander only for deployment/push/pull when needed.
+Maintain independent containers, networks, secrets, data and operational lifecycle. Docker Compose for local and VPS; API/worker/web, PostgreSQL, Redis, object/media storage folder; reverse proxy; health/readiness; log rotation, resource limits, deployment rollback, backups. Use GitHub CI for install, lint, typecheck, tests, builds, security checks, migration validation and container config. Do not deploy or change the VPS without explicit authorization; Desktop Commander only for deployment/push/pull when needed.
 
 Testing: unit, schema, API, multi-tenant IDOR/RBAC, auth, connection capabilities, mocked provider contracts, approval-to-version binding, webhook replay/forgery, scheduled timezones/DST, expired trial limits, AI budget, queue retries, crash/restart recovery, ambiguous remote results/duplicate prevention, end-to-end Playwright workflows, accessibility/responsive checks, basic load tests and backup/restore. External integrations stay clearly unverified until actually tested with authorized access.
 
@@ -137,7 +137,7 @@ Work in small, reviewable GitHub branches and PRs with tests:
 10. Content editor, media library and brand templates
 11. Recurrence parser, calendars, scheduling
 12. Email/in-app approvals and revision workflow
-13. Optional relayWA WhatsApp approval adapter
+13. Optional standalone approved WhatsApp Business Cloud API approvals
 14. Reliable publication orchestration and deduplication
 15. Account Protection Center
 16. Analytics and recommendations
@@ -145,7 +145,7 @@ Work in small, reviewable GitHub branches and PRs with tests:
 18. Multilingual CMS/SEO and accessibility
 19. Security, load, integration verification, release readiness
 
-For every batch: implement actual code and migrations, expose API and UI only when functional, tests, typecheck and build, document risks/unavailable dependencies, include screenshots when practical, record changed files, report exact CI status and create a PR. Never claim tests passed unless they ran. Do not modify relayWA; do not deploy without explicit approval.
+For every batch: implement actual code and migrations, expose API and UI only when functional, tests, typecheck and build, document risks/unavailable dependencies, include screenshots when practical, record changed files, report exact CI status and create a PR. Never claim tests passed unless they ran. Do not modify other projects; do not deploy without explicit approval.
 
 
 ## Experimental-mode release gates
@@ -154,7 +154,7 @@ For every batch: implement actual code and migrations, expose API and UI only wh
 - Run capability research on operator-controlled accounts, record evidence and breakage observations.
 - Only enable permitted, proven features. If commercial access is not permitted, do not operate the adapter for tenants.
 - Place all experimental connectors behind per-tenant consent and platform super-admin kill switches, with safe defaults OFF.
-- Do not connect or import live relayWA customers' sessions or share tokens across applications.
+- Never import another system's customer sessions, data or credentials.
 - The product must continue to work if every unofficial connector is disabled.
 
 Start with architecture docs, connector risk matrix, baseline monorepo and first batch on a feature branch; open a PR, and do not merge or deploy without approval.

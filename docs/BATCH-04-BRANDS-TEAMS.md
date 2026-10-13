@@ -26,4 +26,4 @@ Create an organization at /dashboard; create or select workspace; add brand; inv
 CI migrates PostgreSQL and checks drift, typechecks, runs unit tests and Next.js/NestJS builds, and executes real HTTP integration tests against PostgreSQL/Redis/Mailpit. Full regression tests cover invitation mismatch/replay/revocation, tenant ownership, cross-tenant modification, granted-only editor access, archival, role escalation and removal.
 
 ## GitHub flow
-Batch 4 PR #4 targets Batch 3 PR #3 branch. All PRs remain unmerged until user review. No VPS deployments or relayWA changes.
+Batch 4 PR #4 targets Batch 3 PR #3 branch. All PRs remain unmerged until user review. No VPS deployment or unrelated-project changes.

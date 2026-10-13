@@ -23,7 +23,7 @@ Server registration is OFF unless REGISTRATION_ENABLED=true. The website hides a
 - Workspace/brand CRUD, payment entitlements, MFA, audit logs, secure production reverse proxy and abuse monitoring.
 - Cross-origin cookie deployment verification and browser security test.
 - The presence of base content tables does not mean social publishing works; connector-worker still rejects publish jobs.
-- No VPS deployment, service credentials, connection sessions or relayWA modifications.
+- No VPS deployment, shared external credentials or live connection sessions.
 
 ## Local testing
 Copy .env.example to .env and also to apps/api/.env for NestJS startup. Run docker compose up -d, pnpm install, pnpm --filter @social/api db:migrate:deploy, pnpm dev. Developer Mailpit UI: http://127.0.0.1:8025. Only in a local safe test: set REGISTRATION_ENABLED=true for API, NEXT_PUBLIC_AUTH_ENABLED=true for Next.js. Validate /api/v1/health and go to /register. Run pnpm ci and use GitHub Actions for the actual database integration suite.

@@ -71,7 +71,7 @@ export const marketingPages: Record<string, MarketingPageContent> = {
     highlights: [
       { symbol: "✓", title: "In-app approvals", description: "Review, approve, reject, or request edits from a secure dashboard." },
       { symbol: "✉", title: "Email review", description: "Use time-limited links with appropriate access checks and a delivery fallback." },
-      { symbol: "↗", title: "Optional WhatsApp", description: "Route experimental relayWA notifications with unique request IDs and consent." },
+      { symbol: "↗", title: "Optional WhatsApp", description: "Use independently approved WhatsApp Business Cloud API notifications with explicit consent and unique request IDs." },
       { symbol: "▤", title: "Audit trail", description: "Record decisions, revision requests, timestamps, and approver identities." },
       { symbol: "⎋", title: "Approval expiry", description: "Block publishing if approval arrives too late or refers to an old version." },
       { symbol: "⌑", title: "Client roles", description: "Let invited client approvers review only their authorized brand content." },

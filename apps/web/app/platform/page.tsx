@@ -1,6 +1,7 @@
 import type {Metadata} from "next";
 import Link from "next/link";
 import {PlatformConsole} from "../../components/platform-console";
+import {PlatformProviders} from "../../components/platform-providers";
 export const metadata:Metadata={title:"Platform Super-Admin",robots:{index:false,follow:false},referrer:"no-referrer"};
 export default function Platform(){
  return <main className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
@@ -10,5 +11,6 @@ export default function Platform(){
    <Link href="/platform/billing" className="rounded-xl border border-white/20 px-5 py-3 text-sm font-bold text-emerald-200">Billing administration ↗</Link>
   </div>
   <PlatformConsole/>
+  <PlatformProviders/>
  </main>;
 }

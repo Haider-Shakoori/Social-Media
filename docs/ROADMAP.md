@@ -7,7 +7,7 @@
 - Ten target networks: Instagram, Facebook, Threads, Pinterest, LinkedIn, TikTok, YouTube, Google Business Profile, X and Reddit.
 - Commercial automatic publishing: **official, permitted APIs only**, after testing the precise platform, app, permissions, account type, formats, quotas and approved use case.
 - Every unsupported capability: honest "not available / manual export" state. Experimental session connectors are separately isolated, disabled by default, and never substitutes for authorization or paid API access.
-- Branches for batches 01-05 have code and passing CI checks, but PRs are not merged into `main` or deployed. GitHub PR checks do not replace production acceptance.
+- Branches for batches 01-07 have code and CI checks, but PRs are not merged into `main` or deployed. GitHub PR checks do not replace production acceptance.
 - VPS deployment **not authorized**. External developer apps, paid API access and live social publishing **not configured**.
 
 ## Stage A — Core platform (Batches 01–19)
@@ -20,14 +20,14 @@ These are the original 19 planned batches, retained so earlier milestones and PR
 | 03 | Authentication, tenant schema, authorization, isolation tests | Implemented on PR #3; unmerged |
 | 04 | Workspaces, teams, multilingual brand profiles and onboarding | Implemented on PR #4; unmerged |
 | 05 | Subscription plans, trials, quotas, offline billing | Implemented on PR #5; unmerged |
-| 06 | Platform super-admin modules and website CMS | Next |
-| 07 | Connector interface, capability registry and policy controls | Planned |
+| 06 | Platform super-admin modules and website CMS | Implemented on PR #7; unmerged |
+| 07 | Ten-provider catalog, policy controls, scoped manual export and worker protection | Implemented on Batch 7 PR; unmerged |
 | 08 | Official eligible Meta Facebook Pages + Instagram professional account connector | Planned |
 | 09 | Quota-limited Cloudflare AI and deterministic branded templates | Planned |
 | 10 | Content editor, media library, campaigns and immutable versions | Planned |
 | 11 | Calendar and validated natural-language recurrence | Planned |
 | 12 | Email/in-app approval, revocation, immutable audit | Planned |
-| 13 | Optional relayWA WhatsApp notification/approval fallback | Planned |
+| 13 | Independent notification center with email/in-app delivery and optional approved WhatsApp Business API | Planned |
 | 14 | Durable scheduled publishing, idempotency, reconciliation | Planned |
 | 15 | Account Protection Center, pause/restriction/kill switches | Planned |
 | 16 | Evidence-based analytics limited to real API rights | Planned |
@@ -84,7 +84,7 @@ The core platform stays on the existing VPS. No third-party paid aggregation is 
 5. No publishing action when an authorization, provider review, quota, terms, media validation or budget check fails.
 6. Document verified provider access, actual costs, errors, manual fallback, operational kill switch and rollback.
 7. Do not promote `production_ready` based on tests or mocked provider responses alone.
-8. Pull request review before merge. No VPS/relayWA changes without explicit user authorization.
+8. Pull request review before merge. No deployment without explicit user authorization.
 
 ## Counts
-**27 planned batches** = 19 core + 8 individual provider extensions. **5 implemented on unmerged feature PRs; 22 planned batches remain**. The future 8 providers are roadmap commitments, **not existing live integrations**.
+**27 planned batches** = 19 core + 8 individual provider extensions. **7 implemented on unmerged feature PRs; 20 planned batches remain**. The future 8 providers are roadmap commitments, **not existing live integrations**.

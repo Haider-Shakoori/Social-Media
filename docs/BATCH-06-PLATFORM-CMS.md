@@ -31,4 +31,4 @@ Do not expose Mailpit, Postgres, Redis or admin endpoints without an HTTPS rever
 - Actual production social publishing and third-party APIs are not active.
 - React visual accessibility testing and multi-device browser QA are still required.
 
-No merges to main, no VPS deployment, no relayWA changes.
+No merges to main, no VPS deployment and no unrelated-project modifications.

@@ -15,4 +15,4 @@ Do not import GrowChief AGPL-covered source code. We can learn from its architec
 - Tenant isolation and RBAC tests; account permissions must not depend on supplied IDs alone.
 - Official social integration eligibility verified before production publishing.
 - Experimental self-hosted sessions disabled by default and test-only where permitted.
-- No VPS deployment or changes to relayWA without explicit authorization.
+- No VPS deployment or unrelated-project changes without explicit authorization.
