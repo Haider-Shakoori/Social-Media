@@ -52,8 +52,8 @@ export class PublicCmsController {
     if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))throw new NotFoundException();
     return this.service.publicDetail(t,l,slug);
   }
-  private checkedType(value:string):'ARTICLE'|'GUIDE'{
-    if(value!=='ARTICLE'&&value!=='GUIDE')throw new NotFoundException();
+  private checkedType(value:string):'ARTICLE'|'GUIDE'|'PAGE'{
+    if(value!=='ARTICLE'&&value!=='GUIDE'&&value!=='PAGE')throw new NotFoundException();
     return value;
   }
   private checkedLocale(value:string):string{

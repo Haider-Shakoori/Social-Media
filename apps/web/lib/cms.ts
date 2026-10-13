@@ -1,15 +1,15 @@
 import type {Resource} from "./resources";
-type CmsResource=Resource & {type:"ARTICLE"|"GUIDE";locale:string};
+type CmsResource=Resource & {type:"ARTICLE"|"GUIDE"|"PAGE";locale:string};
 function isResource(value:unknown):value is CmsResource {
  if(!value||typeof value!=="object")return false;
  const r=value as Record<string,unknown>;
- return (r.type==="ARTICLE"||r.type==="GUIDE")&&r.locale==="en"&&typeof r.slug==="string"
+ return (r.type==="ARTICLE"||r.type==="GUIDE"||r.type==="PAGE")&&r.locale==="en"&&typeof r.slug==="string"
   &&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(r.slug)&&typeof r.title==="string"
   &&typeof r.description==="string"&&typeof r.category==="string"&&typeof r.readingTime==="string"
   &&Array.isArray(r.sections)&&r.sections.every(x=>x&&typeof x.heading==="string"&&typeof x.body==="string");
 }
 const base=process.env.CMS_API_BASE_URL?.replace(/\/$/,"");
-export async function getCmsResources(type:"ARTICLE"|"GUIDE"):Promise<Resource[]> {
+export async function getCmsResources(type:"ARTICLE"|"GUIDE"|"PAGE"):Promise<Resource[]> {
  if(!base||process.env.CMS_PUBLIC_ENABLED!=="true")return [];
  try{
   const controller=new AbortController();
@@ -20,7 +20,7 @@ export async function getCmsResources(type:"ARTICLE"|"GUIDE"):Promise<Resource[]
   return Array.isArray(result.items)?result.items.filter(isResource).slice(0,100):[];
  }catch{return [];}
 }
-export async function getCmsResource(type:"ARTICLE"|"GUIDE",slug:string):Promise<Resource|null>{
+export async function getCmsResource(type:"ARTICLE"|"GUIDE"|"PAGE",slug:string):Promise<Resource|null>{
  if(!base||process.env.CMS_PUBLIC_ENABLED!=="true"||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return null;
  try{
   const response=await fetch(base+"/cms/public/"+type+"/en/"+slug,{cache:"no-store",signal:AbortSignal.timeout(3500)});

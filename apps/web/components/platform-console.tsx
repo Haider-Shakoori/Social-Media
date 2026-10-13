@@ -3,7 +3,7 @@ import {useEffect,useState,type FormEvent} from "react";
 import Link from "next/link";
 const API=process.env.NEXT_PUBLIC_API_BASE_URL||"http://localhost:4000/api/v1";
 type Entry={
- id:string;type:"ARTICLE"|"GUIDE";locale:string;slug:string;title:string;description:string;
+ id:string;type:"ARTICLE"|"GUIDE"|"PAGE";locale:string;slug:string;title:string;description:string;
  category:string;readingTime:string;sections:{heading:string;body:string}[];
  status:"DRAFT"|"PUBLISHED"|"ARCHIVED";revision:number;updatedAt:string;
 };
@@ -15,7 +15,7 @@ type Stats={tenants:number;users:number;workspaces:number;brands:number;connecti
  subscriptions:{state:string;count:number}[];posts:{state:string;count:number}[]};
 type Setting={key:string;value:unknown;updatedAt:string};
 const empty={
- type:"ARTICLE" as "ARTICLE"|"GUIDE",locale:"en",slug:"",title:"",description:"",category:"Guides",readingTime:"4 min",
+ type:"ARTICLE" as "ARTICLE"|"GUIDE"|"PAGE",locale:"en",slug:"",title:"",description:"",category:"Guides",readingTime:"4 min",
  sections:[{heading:"Overview",body:""}],
 };
 const field="mt-2 w-full rounded-xl border border-white/15 bg-[#07131b] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300";
@@ -144,7 +144,7 @@ export function PlatformConsole(){
     <div className="mt-5 space-y-2">{cms.map(x=><button type="button" key={x.id} onClick={()=>choose(x)}
      className={"block w-full rounded-xl border p-4 text-left "+(entry?.id===x.id?"border-emerald-300/40 bg-emerald-300/10":"border-white/10")}>
      <span className="text-xs text-emerald-300">{x.type} · {x.locale} · {x.status} · v{x.revision}</span>
-     <span className="mt-2 block font-semibold">{x.title}</span><span className="mt-1 block text-xs text-slate-400">/{x.type==="ARTICLE"?"blog":"docs"}/{x.slug}</span>
+     <span className="mt-2 block font-semibold">{x.title}</span><span className="mt-1 block text-xs text-slate-400">/{x.type==="ARTICLE"?"blog":x.type==="GUIDE"?"docs":""}/{x.slug}</span>
     </button>)}</div>
     <PageControls page={page} total={total} pageSize={25} update={setPage}/>
    </div>
@@ -153,7 +153,7 @@ export function PlatformConsole(){
     <p className="mt-2 text-sm text-slate-400">Plain-text sections only. Editing a published entry immediately returns it to draft; republish after review.</p>
     <form onSubmit={e=>void save(e)} className="mt-5 space-y-4">
      <div className="grid gap-4 sm:grid-cols-2">
-      <label className="text-xs text-slate-300">Content type<select disabled={!!entry} className={field} value={form.type} onChange={e=>setForm(x=>({...x,type:e.target.value as "ARTICLE"|"GUIDE"}))}><option value="ARTICLE">Article</option><option value="GUIDE">Guide</option></select></label>
+      <label className="text-xs text-slate-300">Content type<select disabled={!!entry} className={field} value={form.type} onChange={e=>setForm(x=>({...x,type:e.target.value as "ARTICLE"|"GUIDE"|"PAGE"}))}><option value="ARTICLE">Article</option><option value="GUIDE">Guide</option><option value="PAGE">Website page</option></select></label>
       <label className="text-xs text-slate-300">Language<select disabled={!!entry} className={field} value={form.locale} onChange={e=>setForm(x=>({...x,locale:e.target.value}))}>{["en","fa-AF","ps","ar"].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
      </div>
      <label className="block text-xs text-slate-300">Slug (permanent)<input disabled={!!entry} className={field} required minLength={3} maxLength={100} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={form.slug} onChange={e=>setForm(x=>({...x,slug:e.target.value.toLowerCase()}))}/></label>

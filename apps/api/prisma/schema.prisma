@@ -441,6 +441,7 @@ model BillingAuditEvent {
 enum CmsEntryType {
   ARTICLE
   GUIDE
+  PAGE
 }
 
 enum CmsEntryStatus {

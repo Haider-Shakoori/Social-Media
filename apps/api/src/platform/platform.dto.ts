@@ -5,7 +5,7 @@ const section=z.strictObject({
   body:z.string().trim().min(10).max(12000),
 });
 export const cmsEntryInput=z.strictObject({
-  type:z.enum(['ARTICLE','GUIDE']),
+  type:z.enum(['ARTICLE','GUIDE','PAGE']),
   locale:z.enum(['en','fa-AF','ps','ar']).default('en'),
   slug:z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).min(3).max(100),
   title:z.string().trim().min(6).max(180),
@@ -19,7 +19,7 @@ export const cmsEntryPatch=cmsEntryInput.omit({type:true,locale:true,slug:true})
 export const cmsRevisionInput=z.strictObject({expectedRevision:z.number().int().min(1)});
 export const cmsEditInput=cmsEntryPatch.and(cmsRevisionInput);
 export const listCmsQuery=z.strictObject({
-  type:z.enum(['ARTICLE','GUIDE']).optional(),
+  type:z.enum(['ARTICLE','GUIDE','PAGE']).optional(),
   status:z.enum(['DRAFT','PUBLISHED','ARCHIVED']).optional(),
   locale:z.enum(['en','fa-AF','ps','ar']).optional(),
   page:z.coerce.number().int().min(1).max(10000).default(1),

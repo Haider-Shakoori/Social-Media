@@ -5,6 +5,12 @@ import { cmsEntryInput,cmsEntryPatch, settingValue } from './platform.dto';
 import type { z } from 'zod';
 type Input=z.infer<typeof cmsEntryInput>;
 type Patch=z.infer<typeof cmsEntryPatch>;
+export const RESERVED_PAGE_SLUGS=new Set([
+ 'about','features','ai-content','scheduling','approvals','integrations','pricing','faq',
+ 'contact','blog','docs','status','changelog','login','register','dashboard','platform',
+ 'privacy','terms','acceptable-use','cookies','forgot-password','reset-password',
+ 'verify-email','invite','solutions','robots.txt','sitemap.xml','api','health',
+]);
 const publicSelect={
   slug:true,type:true,locale:true,title:true,description:true,category:true,readingTime:true,
   sections:true,publishedAt:true,updatedAt:true,
@@ -91,6 +97,7 @@ export class PlatformService {
     return {page,total,pageSize:take,entries};
   }
   async createEntry(actorId:string,input:Input){
+    if(input.type==='PAGE'&&RESERVED_PAGE_SLUGS.has(input.slug))throw new BadRequestException('Slug reserved by a system page');
     try {
       return await this.db.$transaction(async tx=>{
         const entry=await tx.cmsEntry.create({data:{...input,sections:input.sections,createdById:actorId,updatedById:actorId}});
