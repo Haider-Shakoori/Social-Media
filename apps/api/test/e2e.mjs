@@ -652,3 +652,88 @@ try {
 }finally{
  await studioDb.$disconnect();
 }
+
+
+// Batches 17–24: agency, launch safety, Meta/X preflight, X budget, dry-run and evidence.
+{
+ const xdb=new PrismaClient();
+ try{
+  const base='/tenants/'+idB;
+  let response=await call('GET',base+'/agency/overview',undefined,b.cookie);
+  status(response,200,'agency owner portfolio report');
+  assert.ok(response.data.workspaces.some(w=>w.id===wsB));
+  assert.equal(response.data.externalSocialMetrics,null);
+  status(await call('GET',base+'/agency/overview',undefined,c.cookie),403,'editor cannot enumerate agency portfolio');
+  status(await call('GET',base+'/agency/overview',undefined,aCookie),404,'cross-tenant agency portfolio inaccessible');
+  const list=await call('GET',base+'/workspaces/'+wsB+'/brands',undefined,b.cookie);
+  const sample=list.data.brands.find(x=>x.name==='Brand One');
+  assert.ok(sample?.id);
+  const root=base+'/workspaces/'+wsB+'/brands/'+sample.id;
+  response=await call('GET',base+'/agency/workspaces/'+wsB+'/brands/'+sample.id+'/report?days=30',undefined,c.cookie);
+  status(response,200,'assigned editor can see scoped client report');
+  assert.equal(response.data.reach,null);
+  status(await call('GET',base+'/agency/workspaces/'+wsB+'/brands/'+sample.id+'/report?days=400',undefined,b.cookie),400,'report timeframe strictly validated');
+  const drafts=await call('GET',root+'/studio',undefined,b.cookie);
+  const post=drafts.data.posts.find(x=>x.versions[0]?.caption.includes('Second immutable version'));
+  assert.ok(post?.id,'integrated earlier content post exists');
+  response=await call('GET',root+'/publishing/preflight/facebook/'+post.id,undefined,b.cookie);
+  status(response,200,'Meta preflight is private to brand');
+  assert.equal(response.data.canPublish,false,'no accidental publishing');
+  assert.ok(response.data.checks.find(x=>x.code==='live_worker_available'&&x.ok===false));
+  assert.ok(response.data.checks.find(x=>x.code==='verified_scopes'&&x.ok===false));
+  status(await call('GET',root+'/publishing/preflight/youtube/'+post.id,undefined,b.cookie),400,'deferred provider rejected');
+  status(await call('GET',root+'/publishing/preflight/facebook/'+post.id,undefined,aCookie),404,'foreign tenant cannot inspect preflight');
+  response=await call('GET',root+'/x/preview/'+post.id,undefined,b.cookie);
+  status(response,200,'X safe draft preview');
+  assert.equal(response.data.canPost,false);
+  assert.equal(response.data.budgetAuthorized,false);
+  response=await call('GET',base+'/x-budget',undefined,b.cookie);
+  status(response,200,'owner sees X budget planning');
+  assert.equal(response.data.paidCallsEnabled,false);
+  assert.equal(response.data.hardEnforcementAvailable,false);
+  assert.equal(response.data.measuredProviderSpendMinor,null);
+  status(await call('GET',base+'/x-budget',undefined,c.cookie),403,'editor cannot see financial plan');
+  status(await call('PUT',base+'/x-budget/planning-cap',{monthlyCeilingMinor:500},c.cookie),403,'editor cannot change financial plan');
+  response=await call('PUT',base+'/x-budget/planning-cap',{monthlyCeilingMinor:500},b.cookie);
+  status(response,200,'owner sets planning-only cap');
+  assert.equal(response.data.paidCallsEnabled,false);
+  response=await call('GET',base+'/x-budget',undefined,b.cookie);
+  assert.equal(response.data.monthlyCeilingMinor,500);
+  assert.equal(response.data.measuredProviderSpendMinor,null);
+  const key=(await import('node:crypto')).randomUUID();
+  response=await call('POST',root+'/rehearsals/posts/'+post.id,{network:'facebook',requestKey:key},b.cookie);
+  status(response,201,'dry-run records blocked publishing and no requests');
+  assert.equal(response.data.rehearsal.results.externalApiCalled,false);
+  assert.equal(response.data.rehearsal.results.providerChargeMinor,0);
+  assert.equal(response.data.rehearsal.results.canPublish,false);
+  assert.equal(response.data.replay,false);
+  const runId=response.data.rehearsal.id;
+  response=await call('POST',root+'/rehearsals/posts/'+post.id,{network:'facebook',requestKey:key},b.cookie);
+  status(response,201,'idempotent rehearsal returns existing snapshot');
+  assert.equal(response.data.rehearsal.id,runId);
+  assert.equal(response.data.replay,true);
+  status(await call('POST',root+'/rehearsals/posts/'+post.id,{network:'x',requestKey:key},b.cookie),409,'reused key for different network rejected');
+  status(await call('POST',root+'/rehearsals/posts/'+post.id,{network:'facebook',requestKey:(await import('node:crypto')).randomUUID()},aCookie),404,'tenant separation for rehearsals');
+  response=await call('GET',root+'/evidence/report?days=30',undefined,b.cookie);
+  status(response,200,'internal evidence report for authorized brand');
+  assert.equal(response.data.reportKind,'INTERNAL_EVIDENCE_ONLY');
+  assert.ok(response.data.categories.some(x=>x.type==='dispatch_rehearsal'&&x.count>=1));
+  assert.equal(response.data.externalProviderMetrics.impressions,null);
+  assert.equal(response.data.externalPublishingVerified,false);
+  status(await call('GET',root+'/evidence/report?days=365',undefined,b.cookie),400,'evidence reporting period bounded');
+  status(await call('GET',root+'/evidence/report?days=30',undefined,aCookie),404,'cross-tenant evidence report blocked');
+  status(await call('GET','/platform/launch/readiness',undefined,b.cookie),403,'tenant owner cannot view platform release gates');
+  const ownerId=(await call('GET','/auth/me',undefined,b.cookie)).data.id;
+  await xdb.user.update({where:{id:ownerId},data:{isPlatformAdmin:true}});
+  response=await call('GET','/platform/launch/readiness',undefined,b.cookie);
+  status(response,200,'trusted platform admin sees real blockers');
+  assert.equal(response.data.productionReady,false);
+  assert.deepEqual(response.data.pilot,['facebook','instagram','x']);
+  assert.ok(response.data.checks.some(x=>x.key==='social_automatic_publishing'&&x.status==='BLOCKED'));
+  assert.ok(response.data.checks.some(x=>x.key==='external_analytics'&&x.status==='BLOCKED'));
+  console.log('PASS: agency separation, preflight denial, X budget off, idempotent rehearsal, verified internal evidence and release blockers.');
+ }finally{
+  await xdb.user.updateMany({where:{email:b.email},data:{isPlatformAdmin:false}});
+  await xdb.$disconnect();
+ }
+}
