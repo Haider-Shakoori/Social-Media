@@ -76,3 +76,74 @@ const freshCookie=fresh.response.headers.get('set-cookie')?.split(';')[0];
 status(await call('POST','/auth/logout',{},freshCookie),200,'logout');
 status(await call('GET','/auth/me',undefined,freshCookie),401,'logout revokes session');
 console.log('PASS: verified registration, email replay rejection, login, tenant isolation, timezone, CSRF, password reset, session revocation.');
+
+
+// Batch 4: tenant invitation and brand-access regression suite.
+const c=await createVerified('charlie');
+const d=await createVerified('dina');
+const teamWs=await call('GET','/tenants/'+idB+'/workspaces',undefined,b.cookie);
+status(teamWs,200,'owner B sees own workspaces');
+const wsB=teamWs.data.workspaces[0].id;
+const wsAResult=await call('GET','/tenants/'+idA+'/workspaces',undefined,
+  (await call('POST','/auth/login',{email:a.email,password:'NewTestingPassword#2026!'})).response.headers.get('set-cookie')?.split(';')[0]);
+status(wsAResult,200,'owner A sees own workspaces');
+const wsA=wsAResult.data.workspaces[0].id;
+
+status(await call('POST','/tenants/'+idB+'/workspaces/'+wsB+'/brands',{
+  name:'Non-owner brand',locale:'en'
+},c.cookie),404,'outsider cannot create brand');
+
+let br=await call('POST','/tenants/'+idB+'/workspaces/'+wsB+'/brands',{
+  name:'Bilingual Apparel',locale:'fa-AF',languages:['fa-AF','ps','en'],
+  industry:'Retail',tone:'Warm and informative',primaryColor:'#21bf9f',
+  targetAudience:'Local fashion customers',description:'Use exact product prices and approved imagery.'
+},b.cookie);
+status(br,201,'owner creates brand');const brandId=br.data.brand.id;
+assert.deepEqual(br.data.brand.languages,['fa-AF','ps','en']);
+let other=await call('POST','/tenants/'+idA+'/workspaces/'+wsA+'/brands',{name:'Alice Exclusive',locale:'en'},(await call('POST','/auth/login',{email:a.email,password:'NewTestingPassword#2026!'})).response.headers.get('set-cookie')?.split(';')[0]);
+status(other,201,'owner A creates separate brand');const otherBrandId=other.data.brand.id;
+
+status(await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,c.cookie),404,'outsider cannot list brands');
+status(await call('PATCH','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId,{name:'Attack'},c.cookie),404,'outsider cannot patch brand');
+
+let invite=await call('POST','/tenants/'+idB+'/invitations',{email:c.email,role:'EDITOR'},b.cookie);
+status(invite,201,'owner sends invitation');
+const invited=await mailboxToken(c.email,'Invitation to','invite/accept');
+status(await call('POST','/invitations/accept',{token:invited},d.cookie),400,'email-mismatched login cannot redeem');
+status(await call('POST','/invitations/accept',{token:invited},c.cookie),201,'correct user accepts invitation');
+status(await call('POST','/invitations/accept',{token:invited},c.cookie),400,'single-use invitation replay rejected');
+status(await call('GET','/tenants/'+idB+'/workspaces',undefined,c.cookie),200,'invited member can view tenant workspaces');
+let listed=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,c.cookie);
+status(listed,200,'invited member can view own brand list');assert.equal(listed.data.brands.length,0,'no implicit brand access');
+
+status(await call('POST','/tenants/'+idB+'/workspaces/'+wsB+'/brands',{name:'Escalated Create'},c.cookie),403,'editor cannot create arbitrary brands');
+status(await call('POST','/tenants/'+idB+'/invitations',{email:d.email,role:'ADMIN'},c.cookie),403,'editor cannot invite admin');
+status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:c.email,role:'EDITOR'},c.cookie),400,'grant must use UUID');
+
+const userC=(await call('GET','/auth/me',undefined,c.cookie)).data.id;
+status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:userC,role:'EDITOR'},c.cookie),404,'nonadmin cannot self-grant brand');
+status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:userC,role:'EDITOR'},b.cookie),201,'owner grants brand edit access');
+listed=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,c.cookie);
+status(listed,200,'assigned editor brand list');assert.equal(listed.data.brands.length,1);assert.equal(listed.data.brands[0].myRole,'EDITOR');
+status(await call('PATCH','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId,{tone:'Friendly'},c.cookie),200,'assigned editor changes brand profile');
+status(await call('DELETE','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId,undefined,c.cookie),403,'editor cannot archive brand');
+status(await call('PATCH','/tenants/'+idA+'/workspaces/'+wsA+'/brands/'+otherBrandId,{tone:'Cross-tenant'},c.cookie),404,'editor cannot change another tenant brand');
+status(await call('PUT','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members',{userId:userC,role:'EDITOR'},d.cookie),404,'outsider cannot grant');
+status(await call('DELETE','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId+'/members/'+userC,undefined,b.cookie),200,'owner revokes brand permission');
+listed=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,c.cookie);
+status(listed,200,'revoked editor brand list');assert.equal(listed.data.brands.length,0);
+status(await call('PATCH','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId,{tone:'Bad'},c.cookie),404,'revoked editor cannot write');
+status(await call('DELETE','/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+brandId,undefined,b.cookie),200,'owner archives brand');
+listed=await call('GET','/tenants/'+idB+'/workspaces/'+wsB+'/brands',undefined,b.cookie);
+assert.equal(listed.data.brands.length,0,'archived brands hidden');
+
+const emailA=a.email;
+invite=await call('POST','/tenants/'+idB+'/invitations',{email:emailA,role:'VIEWER'},b.cookie);
+status(invite,201,'invite for revocation');
+const revokedToken=await mailboxToken(emailA,'Invitation to','invite/accept');
+status(await call('DELETE','/tenants/'+idB+'/invitations/'+invite.data.invitation.id,undefined,b.cookie),200,'revoke invitation');
+const aFresh=await call('POST','/auth/login',{email:a.email,password:'NewTestingPassword#2026!'});
+status(aFresh,200,'relogin owner A');
+const aCookie=aFresh.response.headers.get('set-cookie')?.split(';')[0];
+status(await call('POST','/invitations/accept',{token:revokedToken},aCookie),400,'revoked invite cannot be accepted');
+console.log('PASS: brands, agency role boundaries, invite mismatch/replay/revocation, explicit brand access and cross-tenant isolation.');

@@ -2,7 +2,7 @@
 import {FormEvent,useCallback,useEffect,useState} from "react";
 const API=process.env.NEXT_PUBLIC_API_BASE_URL||"http://localhost:4000/api/v1";
 type Workspace={id:string;name:string;timezone:string};
-type Brand={id:string;name:string;locale:string;industry:string|null;description:string|null;website:string|null;logoUrl:string|null;primaryColor:string;targetAudience:string|null;tone:string|null;languages:string[]};
+type Brand={id:string;name:string;myRole:string;locale:string;industry:string|null;description:string|null;website:string|null;logoUrl:string|null;primaryColor:string;targetAudience:string|null;tone:string|null;languages:string[]};
 type Member={userId:string;role:string;user:{email:string;fullName:string}};
 type Invite={id:string;email:string;role:string;acceptedAt:string|null;revokedAt:string|null;expiresAt:string};
 async function apiCall<T>(path:string,method="GET",body?:unknown):Promise<T>{
@@ -118,7 +118,7 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
    await apiCall(brandBase()+"/"+selectedBrand+"/members/"+id,"DELETE");
    setGrants(prev=>prev.filter(x=>x.userId!==id));setNotice("Brand access removed.");
  });}
- const editable=manager || (role==="EDITOR"&&grants.some(x=>x.userId)); // server always decides
+ const editable=manager || brands.find(b=>b.id===selectedBrand)?.myRole==="EDITOR";
  return <section className="mt-10 space-y-6">
    <div><p className="text-xs font-bold tracking-widest text-emerald-300">BRANDS AND TEAM</p><h2 className="mt-2 text-3xl font-bold text-white">Manage your content organization</h2>
      <p className="mt-3 text-sm leading-7 text-slate-400">Each brand is isolated inside its organization. Editors and approvers only see explicitly assigned brands.</p></div>
@@ -137,7 +137,7 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
            <span className="size-4 shrink-0 rounded-full border border-white/30" style={{background:b.primaryColor}}/>
            <span className="flex-1 font-semibold">{b.name}</span><span className="text-xs text-slate-400">{b.locale}</span>
          </button>)}</div>
-       {manager||selectedBrand?<form onSubmit={selectedBrand?e=>void saveBrand(e):e=>void createBrand(e)} className="mt-7 space-y-4 border-t border-white/10 pt-6">
+       {(manager||selectedBrand&&editable)?<form onSubmit={selectedBrand?e=>void saveBrand(e):e=>void createBrand(e)} className="mt-7 space-y-4 border-t border-white/10 pt-6">
          <h4 className="text-lg font-semibold">{selectedBrand?"Edit selected brand":"Create a new brand"}</h4>
          <label className="block text-xs text-slate-300">Brand name<input className={inputClass} value={brandName} onChange={e=>setBrandName(e.target.value)} required minLength={2} maxLength={200}/></label>
          <div className="grid grid-cols-2 gap-3">

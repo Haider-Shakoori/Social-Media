@@ -17,9 +17,10 @@ export class BrandsService {
     const {role}=await this.access.workspace(tenantId,workspaceId,userId);
     const brands=await this.db.brand.findMany({
       where:{workspaceId,archivedAt:null,...(!this.access.isManager(role)?{members:{some:{userId}}}:{})},
-      select:fields,orderBy:{createdAt:'desc'},take:100,
+      select:{...fields,members:{where:{userId},select:{role:true}}},
+      orderBy:{createdAt:'desc'},take:100,
     });
-    return {brands};
+    return {brands:brands.map(({members,...brand})=>({...brand,myRole:this.access.isManager(role)?role:(members[0]?.role||'VIEWER')}))};
   }
   async create(userId:string,tenantId:string,workspaceId:string,input:BrandInput){
     const {role}=await this.access.workspace(tenantId,workspaceId,userId);
