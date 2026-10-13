@@ -26,8 +26,8 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
  const [grants,setGrants]=useState<{userId:string;role:string}[]>([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [brandName,setBrandName]=useState(""),[industry,setIndustry]=useState(""),[tone,setTone]=useState(""),[description,setDescription]=useState("");
- const [locale,setLocale]=useState("en"),[color,setColor]=useState("#6ee7b7"),[website,setWebsite]=useState("");
- const [targetAudience,setTargetAudience]=useState(""),[brandLanguages,setBrandLanguages]=useState("en");
+ const [color,setColor]=useState("#6ee7b7"),[website,setWebsite]=useState("");
+ const [targetAudience,setTargetAudience]=useState("");
  const [inviteEmail,setInviteEmail]=useState(""),[inviteRole,setInviteRole]=useState("EDITOR");
  const [grantUser,setGrantUser]=useState(""),[grantRole,setGrantRole]=useState("EDITOR");
  const base="/tenants/"+tenantId;
@@ -80,23 +80,23 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
  async function createBrand(e:FormEvent){e.preventDefault();await perform(async()=>{
    const created=await apiCall<{brand:Brand}>(brandBase(),"POST",{
      name:brandName,industry:industry||null,tone:tone||null,description:description||null,
-     targetAudience:targetAudience||null,website:website||null,locale,primaryColor:color,
-     languages:[...new Set(brandLanguages.split(",").map(x=>x.trim()).filter(Boolean))],
+     targetAudience:targetAudience||null,website:website||null,locale:"en",primaryColor:color,
+     languages:["en"],
    });
    setBrands(prev=>[created.brand,...prev]);setBrandName("");setDescription("");setNotice("Brand created.");
  });}
  async function saveBrand(e:FormEvent){e.preventDefault();if(!selectedBrand)return;await perform(async()=>{
    const updated=await apiCall<{brand:Brand}>(brandBase()+"/"+selectedBrand,"PATCH",{
      name:brandName,industry:industry||null,tone:tone||null,description:description||null,
-     targetAudience:targetAudience||null,website:website||null,locale,primaryColor:color,
-     languages:[...new Set(brandLanguages.split(",").map(x=>x.trim()).filter(Boolean))],
+     targetAudience:targetAudience||null,website:website||null,locale:"en",primaryColor:color,
+     languages:["en"],
    });
    setBrands(prev=>prev.map(x=>x.id===selectedBrand?updated.brand:x));setNotice("Brand profile updated.");
  });}
  function selectBrand(id:string){setSelectedBrand(id);const item=brands.find(x=>x.id===id);
    if(item){setBrandName(item.name);setIndustry(item.industry||"");setTone(item.tone||"");setDescription(item.description||"");
-     setWebsite(item.website||"");setLocale(item.locale);setColor(item.primaryColor);
-     setTargetAudience(item.targetAudience||"");setBrandLanguages(item.languages.join(","));}
+     setWebsite(item.website||"");setColor(item.primaryColor);
+     setTargetAudience(item.targetAudience||"");}
  }
  async function archiveBrand(){if(!selectedBrand || !window.confirm("Archive this brand? This hides it without erasing its history."))return;
    await perform(async()=>{await apiCall(brandBase()+"/"+selectedBrand,"DELETE");await loadBrands(workspaceId);setSelectedBrand("");setNotice("Brand archived.");});
@@ -138,7 +138,7 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
        <div className="mt-4 space-y-2">{brands.length===0?<p className="text-sm text-slate-400">No accessible brands in this workspace.</p>:brands.map(b=>
          <button key={b.id} onClick={()=>selectBrand(b.id)} type="button" className={"flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm "+(selectedBrand===b.id?"border-emerald-300/40 bg-emerald-300/10":"border-white/10")}>
            <span className="size-4 shrink-0 rounded-full border border-white/30" style={{background:b.primaryColor}}/>
-           <span className="flex-1 font-semibold">{b.name}</span><span className="text-xs text-slate-400">{b.locale}</span>
+           <span className="flex-1 font-semibold">{b.name}</span>
          </button>)}</div>
        {(manager||selectedBrand&&editable)?<form onSubmit={selectedBrand?e=>void saveBrand(e):e=>void createBrand(e)} className="mt-7 space-y-4 border-t border-white/10 pt-6">
          <h4 className="text-lg font-semibold">{selectedBrand?"Edit selected brand":"Create a new brand"}</h4>
@@ -149,12 +149,10 @@ export function TenantManagement({tenantId,role}:{tenantId:string;role:string}) 
          </div>
          <label className="block text-xs text-slate-300">Website (HTTPS)<input className={inputClass} type="url" value={website} onChange={e=>setWebsite(e.target.value)} placeholder="https://example.com"/></label>
          <div className="grid grid-cols-2 gap-3">
-           <label className="block text-xs text-slate-300">Main language<select className={inputClass} value={locale} onChange={e=>setLocale(e.target.value)}>
-             <option value="en">English</option><option value="fa-AF">Dari</option><option value="ps">Pashto</option><option value="ar">Arabic</option>
-           </select></label>
+           
            <label className="block text-xs text-slate-300">Brand color<input type="color" className={inputClass+" h-12"} value={color} onChange={e=>setColor(e.target.value)}/></label>
          </div>
-         <label className="block text-xs text-slate-300">Languages (comma-separated codes)<input className={inputClass} value={brandLanguages} onChange={e=>setBrandLanguages(e.target.value)} placeholder="en,fa-AF,ps"/></label>
+         
          <label className="block text-xs text-slate-300">Target audience<textarea rows={2} maxLength={4000} className={inputClass} value={targetAudience} onChange={e=>setTargetAudience(e.target.value)}/></label>
          <label className="block text-xs text-slate-300">Description and guidelines<textarea rows={3} maxLength={4000} className={inputClass} value={description} onChange={e=>setDescription(e.target.value)}/></label>
          <div className="flex flex-wrap gap-3">
