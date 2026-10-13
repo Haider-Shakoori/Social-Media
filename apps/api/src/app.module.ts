@@ -22,8 +22,9 @@ import { PreflightModule } from './preflight/preflight.module';
 import { XPilotModule } from './x-pilot/x.module';
 import { XBudgetModule } from './cost-controls/x-budget.module';
 import { RehearsalModule } from './rehearsal/rehearsal.module';
+import { EvidenceModule } from './evidence/evidence.module';
 @Module({
-  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule,SchedulerModule,ProtectionModule,AnalyticsModule,AgencyModule,LaunchModule,PreflightModule,XPilotModule,XBudgetModule,RehearsalModule],
+  imports:[PrismaModule,AuthModule,BillingModule,TenantsModule,PlatformModule,ProvidersModule,OAuthModule,CreativeModule,StudioModule,CalendarModule,ApprovalModule,NotificationsModule,SchedulerModule,ProtectionModule,AnalyticsModule,AgencyModule,LaunchModule,PreflightModule,XPilotModule,XBudgetModule,RehearsalModule,EvidenceModule],
   controllers:[HealthController],
 })
 export class AppModule implements NestModule {
