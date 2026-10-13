@@ -73,6 +73,8 @@ model User {
   platformSettings PlatformSetting[]
   providerUpdates SocialProviderPolicy[]
   socialOAuthAttempts SocialOAuthAttempt[]
+  notifications SocialNotification[]
+  notificationEmailOptIn Boolean @default(false) @map("notification_email_opt_in")
 
   @@map("users")
 }
@@ -91,6 +93,7 @@ model Tenant {
   payments PaymentRecord[]
   usageBuckets UsageBucket[]
   billingAudits BillingAuditEvent[]
+  notifications SocialNotification[]
 
   @@map("tenants")
 }
@@ -617,4 +620,21 @@ model CalendarSlot {
  @@index([brandId,scheduledAt])
  @@index([state,scheduledAt])
  @@map("calendar_slots")
+}
+
+model SocialNotification {
+ id String @id @default(uuid()) @db.Uuid
+ recipientId String @map("recipient_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ eventKey String @map("event_key") @db.VarChar(180)
+ subject String @db.VarChar(160)
+ message String @db.VarChar(500)
+ createdAt DateTime @default(now()) @map("created_at")
+ readAt DateTime? @map("read_at")
+ emailedAt DateTime? @map("emailed_at")
+ recipient User @relation(fields:[recipientId],references:[id],onDelete:Cascade)
+ tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+ @@unique([recipientId,eventKey])
+ @@index([recipientId,readAt,createdAt])
+ @@map("social_notifications")
 }
