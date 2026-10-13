@@ -34,6 +34,8 @@ jobs:
       API_PORT: '4000'
       NODE_ENV: test
       REGISTRATION_ENABLED: 'true'
+      CMS_PUBLISHING_ENABLED: 'true'
+      CMS_PUBLIC_ENABLED: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

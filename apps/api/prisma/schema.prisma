@@ -67,6 +67,10 @@ model User {
   brandAccess BrandMember[]
   adminPayments PaymentRecord[] @relation("PaymentsRecorded")
   auditEvents BillingAuditEvent[]
+  cmsEntries CmsEntry[] @relation("CmsAuthor")
+  cmsEdits CmsEntry[] @relation("CmsEditor")
+  platformAuditEvents PlatformAuditEvent[]
+  platformSettings PlatformSetting[]
 
   @@map("users")
 }
@@ -431,4 +435,67 @@ model BillingAuditEvent {
 
   @@index([tenantId,createdAt])
   @@map("billing_audit_events")
+}
+
+
+enum CmsEntryType {
+  ARTICLE
+  GUIDE
+  PAGE
+}
+
+enum CmsEntryStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model CmsEntry {
+  id String @id @default(uuid()) @db.Uuid
+  type CmsEntryType
+  locale String @default("en") @db.VarChar(12)
+  slug String @db.VarChar(100)
+  title String @db.VarChar(180)
+  description String @db.VarChar(500)
+  category String @db.VarChar(80)
+  readingTime String @default("4 min") @map("reading_time") @db.VarChar(30)
+  sections Json
+  status CmsEntryStatus @default(DRAFT)
+  revision Int @default(1)
+  publishedAt DateTime? @map("published_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  createdById String @map("created_by_id") @db.Uuid
+  updatedById String @map("updated_by_id") @db.Uuid
+  createdBy User @relation("CmsAuthor",fields:[createdById],references:[id],onDelete:Restrict)
+  updatedBy User @relation("CmsEditor",fields:[updatedById],references:[id],onDelete:Restrict)
+
+  @@unique([type,locale,slug])
+  @@index([status,type,locale,publishedAt])
+  @@map("cms_entries")
+}
+
+model PlatformSetting {
+  key String @id @db.VarChar(100)
+  value Json
+  updatedById String @map("updated_by_id") @db.Uuid
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedBy User @relation(fields:[updatedById],references:[id],onDelete:Restrict)
+
+  @@map("platform_settings")
+}
+
+model PlatformAuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  action String @db.VarChar(100)
+  resourceType String @map("resource_type") @db.VarChar(60)
+  resourceId String? @map("resource_id") @db.VarChar(150)
+  details Json
+  createdAt DateTime @default(now()) @map("created_at")
+  actor User @relation(fields:[actorId],references:[id],onDelete:Restrict)
+
+  @@index([createdAt])
+  @@index([resourceType,resourceId])
+  @@map("platform_audit_events")
 }
