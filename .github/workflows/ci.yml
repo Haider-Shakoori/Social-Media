@@ -7,8 +7,33 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: social_media
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci -d social_media" --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:8-alpine
+        ports: ['6381:6379']
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ['1025:1025', '8025:8025']
     env:
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5434/social_media?schema=public
+      REDIS_URL: redis://127.0.0.1:6381
+      SMTP_HOST: 127.0.0.1
+      SMTP_PORT: '1025'
+      SMTP_FROM: social-ci@local.test
+      CORS_ORIGIN: http://localhost:3000
+      WEB_BASE_URL: http://localhost:3000
+      API_PORT: '4000'
+      NODE_ENV: test
+      REGISTRATION_ENABLED: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -19,6 +44,16 @@ jobs:
           node-version: '22'
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @social/api db:validate
+      - run: pnpm --filter @social/api db:migrate:deploy
+      - run: pnpm --filter @social/api exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: API and tenant integration tests
+        run: |
+          (cd apps/api && node dist/main.js > /tmp/social-api.log 2>&1 &)
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4000/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          node apps/api/test/e2e.mjs || { cat /tmp/social-api.log; exit 1; }

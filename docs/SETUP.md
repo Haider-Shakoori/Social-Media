@@ -1,26 +1,33 @@
-# Development setup — Batch 1 foundation upgraded
+# Social-Media local developer setup
 
-This application is independent of relayWA and has not been deployed.
+## Stack
+Node.js 22+, pnpm 12.9.1, NestJS 12, Next.js 16, PostgreSQL 17, Redis 8, Prisma 6, Mailpit (local SMTP inbox).
 
-Prerequisites: Node.js >=22, pnpm as declared in package.json, Docker Compose.
+## Start from the GitHub repository
+1. Clone the repository and switch to the appropriate Batch 3 feature branch.
+2. Copy root .env.example to .env and to apps/api/.env (and to apps/connector-worker/.env if testing the experimental workers). Do not commit copies.
+3. Ensure all passwords and secrets are private for any shared environment; .env.example contains local placeholders.
+4. Run docker compose up -d to start **development-only** PostgreSQL, Redis and Mailpit bound to loopback.
+5. Run pnpm install --no-frozen-lockfile, then pnpm --filter @social/api db:migrate:deploy and pnpm --filter @social/api db:generate.
+6. Run pnpm dev for the NestJS API and Next.js website. Use http://localhost:4000/api/v1/health and http://localhost:3000.
+7. For local, controlled beta testing only: set REGISTRATION_ENABLED=true in apps/api/.env and NEXT_PUBLIC_AUTH_ENABLED=true in the environment for the Next.js build/dev server; restart both services. They are deliberately disabled by default.
+8. Open http://localhost:3000/register. Registration emails are visible in Mailpit's local-only UI at http://127.0.0.1:8025. Verify your email before signing in.
+9. After authentication, open /dashboard to create a tenant and additional workspace.
+10. Run pnpm typecheck, pnpm test and pnpm build. GitHub CI also runs migration deploy/drift checks and real integration tests with Postgres/Redis/Mailpit.
 
-1. Clone this repository and enter its root.
-2. Copy `.env.example` to `.env` for Docker Compose. Copy it also to `apps/api/.env` and `apps/connector-worker/.env` for app processes if launching from their package directories, and change secrets for all shared environments.
-3. Start local PostgreSQL and Redis: `docker compose up -d`.
-4. `pnpm install --no-frozen-lockfile`
-5. `pnpm --filter @social/api db:validate`
-6. `pnpm --filter @social/api db:generate`
-7. After reviewing the schema, create an initial migration against the disposable local DB: `pnpm --filter @social/api db:migrate:dev --name init`. Commit generated migrations before production use.
-8. `pnpm dev`. Open http://localhost:3000. API: http://localhost:4000/api/v1/health.
-9. Worker is independent and stays off by default: `pnpm --filter @social/connector-worker dev` starts a non-publishing job processor only when explicitly wanted.
-10. `pnpm ci` for typecheck, tests and builds. CI validates Prisma schema without a live database.
+## Important environment settings
+- DATABASE_URL: dedicated PostgreSQL database, not relayWA's.
+- REDIS_URL: dedicated Redis endpoint/namespace (separate Redis service in production).
+- CORS_ORIGIN: exact allowed web origins; never '*'.
+- WEB_BASE_URL: exact frontend origin, used in verification/reset emails.
+- SMTP_HOST, SMTP_PORT, SMTP_FROM: real permitted SMTP in production, local Mailpit during testing.
+- REGISTRATION_ENABLED: false in production until approval to launch.
+- NEXT_PUBLIC_AUTH_ENABLED: false until frontend account pages are ready for controlled beta.
+- NODE_ENV=production: makes auth cookies Secure (requires HTTPS).
+- PUBLIC_INDEXING_ENABLED: disabled before public launch.
 
-The initial Prisma schema is a starting domain model; production tenant RBAC, migrations and CRUD endpoints are later work. The connector worker deliberately rejects all publish jobs.
+## Security and deployment
+Do not deploy dev Compose directly or expose its database, Redis or Mailpit UI to the internet. Configure a trusted HTTPS reverse proxy, correct cookie site/domain behavior, secure SMTP sender, protections against abuse, log retention, backups and legal review before public signup. The app intentionally has no active social publishing; connector-worker rejects publish operations. Do not merge/deploy or change relayWA without explicit authorization.
 
-## Operational rules
-- Do not deploy development Compose to production unchanged.
-- Database and Redis ports bind to loopback only; not publicly exposed.
-- Keep `.env` files, credentials, OAuth tokens and user sessions out of Git.
-- The repository is currently public.
-- No external platform authorization, live user connection, paid service or social publishing has been configured.
-- No relayWA services or customers have been altered.
+## PR dependencies
+Merge Batch 1 PR #1, then Batch 2 PR #2, then Batch 3 PR #3 after review and green GitHub CI.
