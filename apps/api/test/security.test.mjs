@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 const require=createRequire(import.meta.url);
 const {hashPassword,verifyPassword,createToken,hashToken}=require('../dist/security/crypto.js');
-const {readSessionCookie,validateRequestOrigin}=require('../dist/security/request-security.js');
+const {readSessionCookie,validateRequestOrigin,RequestSecurityMiddleware}=require('../dist/security/request-security.js');
 test('password hashed with random salt and verified using timing-safe comparison',async()=>{
  const hash=await hashPassword('SufficientlyLongPassword123!');
  assert.ok(hash.startsWith('scrypt.v1.'));
@@ -24,4 +24,23 @@ test('CSRF origin check rejects state changes from untrusted or missing origins'
  assert.doesNotThrow(()=>validateRequestOrigin('POST',allowed[0],allowed));
  assert.throws(()=>validateRequestOrigin('POST',undefined,allowed));
  assert.throws(()=>validateRequestOrigin('PATCH','https://evil.example.test',allowed));
+});
+
+test('only exact signed Meta callback routes bypass Origin/form checks',()=>{
+ const middleware=new RequestSecurityMiddleware();
+ const simulate=(path,type='application/x-www-form-urlencoded')=>{
+  let nextCalled=false;
+  const req={method:'POST',path,header:(name)=>{
+   const headers={'content-type':type,'content-length':'25'};
+   return headers[name.toLowerCase()];
+  }};
+  const res={setHeader:()=>{}};
+  middleware.use(req,res,()=>{nextCalled=true;});
+  return nextCalled;
+ };
+ assert.equal(simulate('/api/v1/social/meta/deauthorize'),true);
+ assert.equal(simulate('/api/v1/social/meta/data-deletion'),true);
+ assert.throws(()=>simulate('/api/v1/social/meta/other'));
+ assert.throws(()=>simulate('/api/v1/social/oauth/instagram/callback'));
+ assert.throws(()=>simulate('/api/v1/social/meta/data-deletion/status'));
 });
