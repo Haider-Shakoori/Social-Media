@@ -51,6 +51,20 @@ jobs:
             node /app/dist/smoke.js playwright
             node /app/dist/smoke.js patchright
           '
+      - name: Temporal worker initialization smoke (one activity)
+        run: |
+          docker run -d --rm --name browser-lab-temporal-ci -p 127.0.0.1:27233:7233 \
+            temporalio/temporal:latest server start-dev --ip 0.0.0.0
+          trap 'docker rm -f browser-lab-temporal-ci >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if (echo >/dev/tcp/127.0.0.1/27233) 2>/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          timeout 60s docker run --rm --network host \
+            -e TEMPORAL_ADDRESS=127.0.0.1:27233 \
+            --entrypoint node social-browser-lab:local /app/dist/worker-smoke.js
       - name: Package GitHub-tested experimental image (main only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
