@@ -17,7 +17,11 @@ export class InstagramLifecycleController{
   const ids=rows.filter(row=>{
    try{
     return unseal<{loginType?:string}>(row.encryptedCredentials!).loginType==='instagram';
-   }catch{return false;}
+   }catch{
+    // An unreadable/rotated ciphertext must not retain customer credentials
+    // when Meta asks us to erase the matching Instagram account.
+    return true;
+   }
   }).map(row=>row.id);
   if(ids.length)await this.db.socialConnection.updateMany({where:{id:{in:ids}},
    data:{state:'DISCONNECTED',encryptedCredentials:null,externalAccountName:null,
