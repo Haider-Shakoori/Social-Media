@@ -508,7 +508,10 @@ try {
   const linked=await oauthDb.socialConnection.findUniqueOrThrow({where:{id:result.data.account.id}});
   assert.ok(linked.encryptedCredentials?.startsWith('v1.'));
   assert.equal(linked.encryptedCredentials.includes('not-a-real-provider-token'),false);
-  assert.equal(linked.state,'CONNECTED');
+  assert.equal(linked.state,'RESTRICTED','synthetic grants without a parent Meta user token must fail closed');
+  assert.equal(linked.lastHealthReason,'token_invalid');
+  status(await call('POST',base+'/accounts/'+linked.id+'/health-check',{},aCookie),404,'cross-tenant health access blocked');
+  status(await call('POST',base+'/accounts/'+linked.id+'/refresh',{},aCookie),404,'cross-tenant token refresh blocked');
   status(await call('POST','/social/oauth/attempts/'+attempt.id+'/select',{
     accountId:'synthetic-facebook-page-'+stamp,platform:'facebook'},b.cookie),404,'selection replay forbidden');
   result=await call('GET',base+'/readiness',undefined,b.cookie);
