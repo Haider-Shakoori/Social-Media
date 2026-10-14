@@ -2,6 +2,7 @@ import {NativeConnection,Worker} from '@temporalio/worker';
 import {requireLabEnabled} from './config';
 import {inspectAllowlistedPage} from './browser';
 import {singleSessionWorkerLimits} from './worker-limits';
+import {runConnectorAgent} from './agent';
 
 async function main():Promise<void>{
  requireLabEnabled();
@@ -18,6 +19,8 @@ async function main():Promise<void>{
   ...singleSessionWorkerLimits,
  });
  console.log('Experimental browser worker running: read-only, allowlisted, concurrency=1');
- try{await worker.run();}finally{await connection.close();}
+ const abort=new AbortController();
+ const agent=runConnectorAgent(abort.signal);
+ try{await worker.run();}finally{abort.abort();await agent;await connection.close();}
 }
 void main().catch(error=>{console.error('Experimental browser worker unavailable:',error instanceof Error?error.message:'unknown error');process.exitCode=1;});
