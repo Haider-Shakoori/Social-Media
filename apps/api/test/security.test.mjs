@@ -31,7 +31,7 @@ test('only exact signed Meta callback routes bypass Origin/form checks',()=>{
  const simulate=(path,type='application/x-www-form-urlencoded')=>{
   let nextCalled=false;
   // Express/Nest mounts middleware: req.path may lose /api/v1, but originalUrl does not.
-  const req={method:'POST',path:path.replace(/^\\/api\\/v1/,'') ,originalUrl:path,header:(name)=>{
+  const req={method:'POST',path:path.slice('/api/v1'.length),originalUrl:path,header:(name)=>{
    const headers={'content-type':type,'content-length':'25'};
    return headers[name.toLowerCase()];
   }};
