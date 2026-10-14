@@ -26,7 +26,7 @@ export function TenantDashboard(){
    if(!enabled){setLoading(false);return;}
    let cancelled=false;
    void Promise.all([request<User>("/auth/me"),request<{tenants:Tenant[]}>("/tenants")])
-   .then(([profile,data])=>{if(!cancelled){setUser(profile);setTenants(data.tenants);setActive(data.tenants[0]?.id||null);}})
+   .then(([profile,data])=>{if(!cancelled){setUser(profile);setTenants(data.tenants);const requested=new URLSearchParams(window.location.search).get("socialTenant");setActive(data.tenants.find(t=>t.id===requested)?.id||data.tenants[0]?.id||null);}})
    .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:"Not authorized");})
    .finally(()=>{if(!cancelled)setLoading(false);});
    return()=>{cancelled=true;};
@@ -55,7 +55,7 @@ export function TenantDashboard(){
  return <div>
    <div className="flex flex-wrap items-center justify-between gap-5"><div><p className="text-xs font-bold tracking-[.18em] text-emerald-300">SECURE TENANT FOUNDATION</p><h1 className="mt-3 text-4xl font-bold tracking-tight">Welcome, {user.fullName}.</h1><p className="mt-3 text-slate-400">Verified account · {user.email}</p></div><button type="button" onClick={()=>void logout()} className="rounded-xl border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10">Sign out</button></div>
    {error&&<p role="alert" className="mt-6 rounded-xl border border-rose-300/25 bg-rose-300/10 p-4 text-sm text-rose-200">{error}</p>}
-   <p className="mt-8 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">Workspace identity is enabled for controlled testing. Social connections and AI publishing are not active yet. Subscription records, team invites and brand profiles are available for controlled testing.</p>
+   <p className="mt-8 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">Choose a brand in Social Account Connections to authorize a Facebook Page or Instagram professional account once Meta app credentials are configured. Automatic publishing remains off.</p>
    <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_1fr]">
      <section className="rounded-3xl border border-white/10 bg-[#102630] p-7"><h2 className="text-2xl font-bold">Your organizations</h2>
        <div className="mt-5 space-y-2">{tenants.length===0?<p className="text-sm text-slate-400">Create your first organization below.</p>:tenants.map(t=><button key={t.id} type="button" onClick={()=>{setActive(t.id);setWorkspaces([]);setError("");}} className={"block w-full rounded-xl border px-4 py-3 text-left text-sm "+(active===t.id?"border-emerald-300/45 bg-emerald-300/10 text-emerald-200":"border-white/10 text-white")}><strong>{t.name}</strong><span className="ml-3 text-xs text-slate-400">{t.role}</span></button>)}</div>

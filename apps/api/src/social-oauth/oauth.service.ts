@@ -107,7 +107,8 @@ export class OAuthService{
   await this.db.socialOAuthAttempt.update({where:{id:found.id},data:{
     pendingCipher:seal(accounts),verifierCipher:null,
   }});
-  return {attemptId:found.id};
+  const brand=await this.db.brand.findUniqueOrThrow({where:{id:found.brandId},select:{workspaceId:true,workspace:{select:{tenantId:true}}}});
+  return {attemptId:found.id,tenantId:brand.workspace.tenantId,workspaceId:brand.workspaceId,brandId:found.brandId};
  }
  async accounts(userId:string,sessionId:string,id:string){
   const attempt=await this.existingAttempt(userId,sessionId,id);
@@ -238,11 +239,14 @@ export class OAuthService{
    return {disconnected:true,providerRevocation:'You may also revoke this app in your social account settings'};
   });
  }
- dashboardRedirect(result:{attemptId:string}|{failure:string}){
+ dashboardRedirect(result:{attemptId:string;tenantId:string;workspaceId:string;brandId:string}|{failure:string}){
   const base=process.env.WEB_BASE_URL||'http://localhost:3000';
   const url=new URL('/dashboard',base);
   if(url.origin!==new URL(base).origin)throw new Error('Invalid WEB_BASE_URL');
-  if('attemptId'in result)url.searchParams.set('socialAttempt',result.attemptId);
+  if('attemptId'in result){url.searchParams.set('socialAttempt',result.attemptId);
+   url.searchParams.set('socialTenant',result.tenantId);
+   url.searchParams.set('socialWorkspace',result.workspaceId);
+   url.searchParams.set('socialBrand',result.brandId);} 
   else url.searchParams.set('socialConnectError',result.failure);
   return url.toString();
  }

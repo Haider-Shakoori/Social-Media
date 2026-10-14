@@ -20,11 +20,13 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
  const [providers,setProviders]=useState<Provider[]>([]);
  const [brands,setBrands]=useState<Brand[]>([]);
  const [workspaceId,setWorkspaceId]=useState(""),[brandId,setBrandId]=useState("");
+ const scopedWorkspace=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("socialWorkspace"):null;
+ const scopedBrand=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("socialBrand"):null;
  const [network,setNetwork]=useState("instagram"),[contentType,setContentType]=useState("image");
  const [caption,setCaption]=useState(""),[mediaLines,setMediaLines]=useState(""),[note,setNote]=useState("");
  const [preview,setPreview]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
  useEffect(()=>{
-  let live=true;setProviders([]);setPreview("");setError("");setWorkspaceId(workspaces[0]?.id||"");
+  let live=true;setProviders([]);setPreview("");setError("");setWorkspaceId(workspaces.some(w=>w.id===scopedWorkspace)?scopedWorkspace!:workspaces[0]?.id||"");
   void query<{providers:Provider[]}>("/tenants/"+tenantId+"/providers").then(d=>{if(live)setProviders(d.providers.filter(p=>["facebook","instagram","x"].includes(p.id)));})
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Could not load connector catalog");});
   return()=>{live=false;};
@@ -33,7 +35,7 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
   if(!workspaceId){setBrands([]);setBrandId("");return;}
   let live=true;setBrandId("");setBrands([]);
   void query<{brands:Brand[]}>("/tenants/"+tenantId+"/workspaces/"+workspaceId+"/brands")
-   .then(d=>{if(live){setBrands(d.brands);setBrandId(d.brands[0]?.id||"");}})
+   .then(d=>{if(live){setBrands(d.brands);setBrandId(d.brands.some(b=>b.id===scopedBrand)?scopedBrand!:d.brands[0]?.id||"");}})
    .catch(()=>{if(live)setBrands([]);});
   return()=>{live=false;};
  },[tenantId,workspaceId]);
@@ -50,24 +52,14 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
   finally{setBusy(false);}
  }
  return <section className="mt-10 space-y-6 rounded-3xl border border-white/10 bg-[#102630] p-7">
-  <div><p className="text-xs font-bold tracking-widest text-emerald-300">META + X PILOT · BATCH 8</p>
-   <h2 className="mt-3 text-2xl font-bold">Platforms and manual publishing</h2>
-   <p className="mt-3 text-sm leading-7 text-slate-300">Facebook Pages, Instagram and X are the pilot platforms. Other social networks are deferred. Authorized test account linking is supported only when operator approval and credentials are configured; automatic publishing remains disabled.</p>
+  <div><p className="text-xs font-bold tracking-widest text-emerald-300">SOCIAL ACCOUNT CONNECTIONS</p>
+   <h2 className="mt-3 text-2xl font-bold">Connect social accounts</h2>
+   <p className="mt-3 text-sm leading-7 text-slate-300">Select a workspace and brand, then authorize your Facebook Pages or Instagram professional account using Meta. X remains manual-only. Connecting does not publish content.</p>
   </div>
   {error&&<p role="alert" className="rounded-xl border border-rose-300/30 p-4 text-sm text-rose-200">{error}</p>}
-  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-   {providers.map(p=><button type="button" onClick={()=>chooseNetwork(p.id)} key={p.id} className={"rounded-xl border p-4 text-left "+(p.id===network?"border-emerald-300/50 bg-emerald-300/10":"border-white/10")}>
-    <h3 className="text-sm font-bold">{p.name}</h3><p className="mt-2 text-xs capitalize text-slate-400">{p.rollout.replaceAll("_"," ")}</p>
-    <p className="mt-3 text-xs text-amber-200">No live publishing · Batch {p.rolloutBatch}</p>
-   </button>)}
-  </div>
-  {selected&&<p className="rounded-xl border border-white/10 p-4 text-sm leading-7 text-slate-300"><strong className="text-white">{selected.name}</strong>: {selected.accountHint}. {selected.accessRequirement}. {selected.reason}.</p>}
-  {["OWNER","ADMIN"].includes(role)&&workspaceId&&brandId&&
-   <MetaXConnections tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
-  {workspaceId&&brandId&&<StudioWorkbench tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
-  <form onSubmit={e=>void createPackage(e)} className="grid gap-5 border-t border-white/10 pt-7 lg:grid-cols-2">
-   <div className="space-y-4">
-    <h3 className="text-lg font-bold">Manual export preparation</h3>
+  <section className="rounded-2xl border border-emerald-300/20 bg-[#071d22] p-5">
+   <h3 className="text-lg font-bold">1. Choose the brand to connect</h3>
+   <p className="mb-4 mt-2 text-sm text-slate-300">Your authorized Facebook Page or Instagram account will belong to the selected brand.</p>
     <div className="grid gap-4 sm:grid-cols-2">
      <label className="text-xs text-slate-300">Workspace<select value={workspaceId} onChange={e=>setWorkspaceId(e.target.value)} className={inputClass}>
       <option value="">Select workspace</option>{workspaces.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}
@@ -76,6 +68,22 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
       <option value="">Select brand</option>{brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
      </select></label>
     </div>
+   {!workspaces.length&&<p className="mt-4 text-sm text-amber-200">First create an organization workspace above, then add a brand below.</p>}
+   {workspaceId&&!brands.length&&<p className="mt-4 text-sm text-amber-200">Create a brand in Brand & Team Management before connecting a social account.</p>}
+  </section>
+  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   {providers.map(p=><button type="button" onClick={()=>chooseNetwork(p.id)} key={p.id} className={"rounded-xl border p-4 text-left "+(p.id===network?"border-emerald-300/50 bg-emerald-300/10":"border-white/10")}>
+    <h3 className="text-sm font-bold">{p.name}</h3><p className="mt-2 text-xs text-slate-400">{p.id==="x"?"Manual export":p.rollout==="testing"?"Meta authorization testing":"Meta authorization setup required"}</p>
+    <p className="mt-3 text-xs text-amber-200">{p.id==="x"?"Manual posting only":"Connect via official Meta login"} · No automatic publishing</p>
+   </button>)}
+  </div>
+ 
+  {["OWNER","ADMIN"].includes(role)&&workspaceId&&brandId&&
+   <MetaXConnections tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
+  {workspaceId&&brandId&&<StudioWorkbench tenantId={tenantId} workspaceId={workspaceId} brandId={brandId}/>}
+  <form onSubmit={e=>void createPackage(e)} className="grid gap-5 border-t border-white/10 pt-7 lg:grid-cols-2">
+   <div className="space-y-4">
+    <h3 className="text-lg font-bold">Manual export preparation</h3>
     <label className="block text-xs text-slate-300">Content type<select className={inputClass} value={contentType} onChange={e=>setContentType(e.target.value)}>
      {(selected?.contentCandidates||[]).map(format=><option key={format} value={format}>{format.replaceAll("_"," ")}</option>)}
     </select></label>
