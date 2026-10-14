@@ -13,6 +13,12 @@ export class PublishingController{
   @Param('workspaceId',new ParseUUIDPipe()) w:string,@Param('brandId',new ParseUUIDPipe()) b:string){
   return this.publishing.list(t,w,b,r.authUserId);
  }
+ @Post('targets/:targetId/reconcile')
+ reconcile(@Req() r:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) t:string,
+  @Param('workspaceId',new ParseUUIDPipe()) w:string,@Param('brandId',new ParseUUIDPipe()) b:string,
+  @Param('targetId',new ParseUUIDPipe()) id:string){
+  return this.publishing.reconcile(t,w,b,r.authUserId,id);
+ }
  @Post('targets')
  queue(@Req() r:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) t:string,
   @Param('workspaceId',new ParseUUIDPipe()) w:string,@Param('brandId',new ParseUUIDPipe()) b:string,
