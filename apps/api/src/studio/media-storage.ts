@@ -81,6 +81,7 @@ export function requireR2Config(){
   'MEDIA_R2_SECRET_ACCESS_KEY','MEDIA_PUBLIC_BASE_URL']){
   if(!process.env[key])throw new ServiceUnavailableException('Media storage has not been configured');
  }
+ signer();
  const url=validHttpsBase(process.env.MEDIA_R2_ENDPOINT!);
  if(!/\.r2\.cloudflarestorage\.com$/.test(url.hostname)||url.pathname!=='/')
   throw new ServiceUnavailableException('Media object storage endpoint must be a Cloudflare R2 endpoint');
