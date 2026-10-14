@@ -2,7 +2,7 @@ import {requiredMetaScopes} from '../social-oauth/meta-account';
 
 export type PublishNetwork='facebook'|'instagram'|'x'|string;
 export type PublishGate={
- network:PublishNetwork;featureEnabled:boolean;globalPaused:boolean;brandPaused:boolean;
+ network:PublishNetwork;loginType?:'instagram'|'facebook';featureEnabled:boolean;globalPaused:boolean;brandPaused:boolean;
  archived:boolean;mode:string;connectionState:string;connectionPaused:boolean;tokenExpiresAt:Date|null;
  scopes:string[];policyState:string;operatorEnabled:boolean;apiApproved:boolean;
  productionVerified:boolean;subscriptionActive:boolean;approvedVersionMatches:boolean;
@@ -16,7 +16,7 @@ export function metaPublishingBlockers(g:PublishGate,now=new Date()):string[]{
  if(g.mode!=='OFFICIAL'||g.connectionState!=='CONNECTED'||g.connectionPaused)reasons.push('connection_not_ready');
  if(g.tokenExpiresAt&&g.tokenExpiresAt<=now)reasons.push('token_expired');
  if(g.network==='facebook'||g.network==='instagram'){
-  if(requiredMetaScopes(g.network).some(x=>!g.scopes.includes(x)))reasons.push('permission_missing');
+  if(requiredMetaScopes(g.network,g.loginType).some(x=>!g.scopes.includes(x)))reasons.push('permission_missing');
  }
  if(g.policyState!=='PRODUCTION_READY'||!g.operatorEnabled||!g.apiApproved||!g.productionVerified)
   reasons.push('provider_not_approved');
