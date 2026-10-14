@@ -8,6 +8,7 @@ export default function Platform(){
   <p className="text-xs font-bold tracking-[.2em] text-emerald-300">PLATFORM CONTROL CENTER</p>
   <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
    <div><h1 className="text-4xl font-bold">Operations and website CMS</h1><p className="mt-3 max-w-3xl text-slate-300">Manage editorial content, review tenant activity and inspect system operation. Access is restricted to explicitly designated platform administrators.</p></div>
+   <Link href="/platform/connectors" className="rounded-xl border border-emerald-300/30 px-5 py-3 text-sm font-bold text-emerald-200">Connector Management ↗</Link>
    <Link href="/platform/billing" className="rounded-xl border border-white/20 px-5 py-3 text-sm font-bold text-emerald-200">Billing administration ↗</Link>
   </div>
   <PlatformConsole/>

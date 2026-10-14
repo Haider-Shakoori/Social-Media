@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {mkdir} from 'node:fs/promises';
 import {join,resolve,sep} from 'node:path';
 
-export type InspectionRequest = { accountKey:string; targetUrl:string; driver:'playwright'|'patchright' };
+export type InspectionRequest = { accountKey:string; proxyKey?:string; targetUrl:string; driver:'playwright'|'patchright' };
 export type InspectionResult = {status:'completed'; accountKey:string; origin:string; title:string; checkedAt:string; driver:string};
 const keyPattern=/^[a-zA-Z0-9][a-zA-Z0-9._-]{2,79}$/;
 export function requireLabEnabled(env:NodeJS.ProcessEnv=process.env):void{
@@ -25,6 +25,7 @@ export function assertAllowedRequest(input:InspectionRequest,env:NodeJS.ProcessE
  requireLabEnabled(env);
  if(!keyPattern.test(input.accountKey)||input.accountKey==='.'||input.accountKey==='..')
   throw new Error('Invalid account key');
+ if(input.proxyKey&&!keyPattern.test(input.proxyKey))throw new Error('Invalid proxy reference');
  if(!['patchright','playwright'].includes(input.driver))throw new Error('Unsupported browser driver');
  const url=new URL(input.targetUrl);
  if(!['https:','http:'].includes(url.protocol)||url.username||url.password||url.hash)

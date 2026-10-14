@@ -30,6 +30,8 @@ services:
       BROWSER_LAB_CHROMIUM_PATH: /usr/bin/chromium
       BROWSER_LAB_PROFILE_DIR: /app/profiles
       TEMPORAL_ADDRESS: temporal-dev:7233
+      BROWSER_LAB_CONTROL_API_URL: https://socials.businessos.af/api/v1
+      BROWSER_LAB_AGENT_TOKEN: "${BROWSER_LAB_AGENT_TOKEN:-}"
     volumes:
       - browser_lab_profiles:/app/profiles
       - type: bind
