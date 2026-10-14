@@ -4,6 +4,7 @@ import {PrismaService} from '../prisma/prisma.service';
 import {AccessService} from '../tenants/access.service';
 import {EntitlementsService,monthStartUTC} from '../billing/entitlements.service';
 import {metaPublishingBlockers,supportedMetaFormat,type PublishGate} from './guard';
+import {verifyFacebookRemote} from './reconcile';
 
 type Db=Prisma.TransactionClient;
 export async function prepareMetaTarget(db:Db,brandId:string,postId:string,connectionId:string,
@@ -75,6 +76,28 @@ export class PublishingService {
     resourceType:'post_target',resourceId:target.id,details:{tenantId:t,brandId:b,postId:input.postId}}});
    return {target,alreadyQueued:false,notice:'Durable job queued. Every dispatch rechecks account, brand and exact approval.'};
   });
+ }
+ async reconcile(t:string,w:string,b:string,user:string,targetId:string){
+  await this.access.brand(t,w,b,user,['OWNER','ADMIN']);
+  const target=await this.db.postTarget.findFirst({where:{id:targetId,post:{brandId:b}},
+   include:{socialConnection:true}});
+  if(!target)throw new NotFoundException('Publishing target unavailable');
+  if(target.state!=='UNCERTAIN')return {state:target.state,verified:false,automaticRetry:false};
+  if(!target.remoteId||!target.socialConnection.encryptedCredentials||
+     target.socialConnection.platform!=='facebook'||!target.socialConnection.externalAccountId)
+    return {state:'UNCERTAIN',verified:false,automaticRetry:false,
+     nextStep:'Check the actual provider account manually; do not retry this target without resolving duplication risk'};
+  if(!await verifyFacebookRemote({remoteId:target.remoteId,
+    pageId:target.socialConnection.externalAccountId,
+    encryptedCredentials:target.socialConnection.encryptedCredentials}))
+    return {state:'UNCERTAIN',verified:false,automaticRetry:false,
+     nextStep:'Provider could not confirm this exact Page post'};
+  const updated=await this.db.postTarget.updateMany({where:{id:targetId,state:'UNCERTAIN'},
+   data:{state:'PUBLISHED',lastFailureCode:null}});
+  if(updated.count)await this.db.platformAuditEvent.create({data:{actorId:user,
+   action:'content.publish.reconciled',resourceType:'post_target',resourceId:targetId,
+   details:{brandId:b,remoteId:target.remoteId}}});
+  return {state:updated.count?'PUBLISHED':'UNCERTAIN',verified:Boolean(updated.count),automaticRetry:false};
  }
  async list(t:string,w:string,b:string,user:string){
   await this.access.brand(t,w,b,user);
