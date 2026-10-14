@@ -4,6 +4,7 @@ import {AuthGuard,type AuthRequest} from '../security/auth.guard';
 import {validated} from '../security/dto';
 import {attemptId,chosenAccount,oauthNetwork} from './oauth.dto';
 import {OAuthService} from './oauth.service';
+import {InstagramOAuthFailure} from './provider-transport';
 
 @Controller('tenants/:tenantId/workspaces/:workspaceId/brands/:brandId/social')
 @UseGuards(AuthGuard)
@@ -50,8 +51,14 @@ export class OAuthCallbacksController{
   try{
    const result=await this.service.callback(req.authUserId,req.authSessionId,network,code,state);
    res.redirect(303,this.service.dashboardRedirect(result));
-  }catch{
-   // Never expose OAuth codes, state or upstream error data to browser redirects.
+  }catch(error){
+   // Only a fixed stage label may reach logs or redirects. Never log Meta's
+   // response bodies, an authorization code, state, tokens or other credentials.
+   if(network==='instagram'&&error instanceof InstagramOAuthFailure){
+    console.warn('Instagram authorization stopped at stage '+error.stage);
+    res.redirect(303,this.service.dashboardRedirect({failure:error.stage}));
+    return;
+   }
    res.redirect(303,this.service.dashboardRedirect({failure:'authorization_failed'}));
   }
  }
