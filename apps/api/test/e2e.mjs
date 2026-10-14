@@ -259,6 +259,16 @@ try {
 const opsDb=new PrismaClient();
 try{
   status(await call('GET','/platform/operations/overview',undefined,aCookie),403,'tenant owner is not a platform administrator');
+  status(await call('GET','/platform/connector-lab/overview',undefined,aCookie),403,
+    'tenant owner denied connector monitoring');
+  status(await call('GET','/platform/connector-lab/overview'),401,
+    'anonymous visitors cannot view connector monitoring');
+  status(await call('POST','/platform/connector-lab/accounts',{accountKey:'unauthorized-label'},aCookie),403,
+    'tenant owner cannot register lab labels');
+  status(await call('POST','/browser-lab/agent/heartbeat',{maxSessions:1,
+    workerMode:'read_only',agentVersion:'attacker',proxyKeys:[]}),503,
+    'agent control bridge defaults disabled');
+
   status(await call('GET','/platform/operations/cms',undefined,c.cookie),403,'former collaborator cannot manage CMS');
   status(await call('GET','/platform/operations/users'),401,'public cannot enumerate platform users');
   let response=await call('GET','/cms/public/ARTICLE/en');
