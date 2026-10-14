@@ -652,3 +652,46 @@ model SocialNotification {
  @@index([recipientId,readAt,createdAt])
  @@map("social_notifications")
 }
+
+
+/// Platform-only experimental browser lab. No passwords, proxy hosts, session cookies or social tokens.
+model BrowserLabAccount {
+  id        String   @id @default(uuid()) @db.Uuid
+  accountKey String  @unique @map("account_key") @db.VarChar(80)
+  proxyKey  String?  @map("proxy_key") @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  jobs      BrowserLabJob[]
+
+  @@map("browser_lab_accounts")
+}
+
+model BrowserLabJob {
+  id        String   @id @default(uuid()) @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  driver    String   @db.VarChar(20)
+  state     String   @default("QUEUED") @db.VarChar(20)
+  title     String?  @db.VarChar(160)
+  failureCode String? @map("failure_code") @db.VarChar(60)
+  createdAt DateTime @default(now()) @map("created_at")
+  startedAt DateTime? @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  actorId   String   @map("actor_id") @db.Uuid
+  account   BrowserLabAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+
+  @@index([state,createdAt])
+  @@index([accountId,createdAt])
+  @@map("browser_lab_jobs")
+}
+
+model BrowserLabRuntime {
+  id              String @id @default("primary") @db.VarChar(20)
+  lastSeenAt      DateTime? @map("last_seen_at")
+  maxSessions     Int @default(1) @map("max_sessions")
+  agentVersion    String @default("unknown") @map("agent_version") @db.VarChar(40)
+  proxyKeys       String[] @default([]) @map("proxy_keys")
+  workerMode      String @default("read_only") @map("worker_mode") @db.VarChar(24)
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("browser_lab_runtime")
+}
