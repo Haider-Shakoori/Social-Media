@@ -17,8 +17,14 @@ function clearCookie(res:Response){
 export class AuthController {
   constructor(private readonly auth:AuthService){}
   @Post('register') @HttpCode(HttpStatus.ACCEPTED)
-  register(@Body() body:unknown,@Req() req:Request){
-    return this.auth.register(validated(registerInput,body),req.ip||'unknown');
+  async register(@Body() body:unknown,@Req() req:Request,@Res({passthrough:true}) res:Response){
+    const result=await this.auth.register(validated(registerInput,body),req.ip||'unknown',req.header('user-agent')||'');
+    if('token' in result && typeof result.token==='string'){
+      setCookie(res,result.token);
+      const {token:_,...publicResult}=result;
+      return publicResult;
+    }
+    return result;
   }
   @Post('resend-verification') @HttpCode(HttpStatus.ACCEPTED)
   resend(@Body() body:unknown,@Req() req:Request){
