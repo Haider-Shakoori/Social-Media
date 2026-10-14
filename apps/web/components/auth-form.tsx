@@ -29,7 +29,10 @@ export function AuthForm({mode,token}:{mode:AuthMode;token?:string}) {
       if(!response.ok)throw new Error(typeof result.message==="string"?result.message:"Request failed");
       setSuccess(true);
       if(mode==="login"){window.location.assign("/dashboard");return;}
-      if(mode==="register"){setMessage("Check your email to verify the account before logging in.");}
+      if(mode==="register"){
+        if(result.user?.id){window.location.assign("/dashboard");return;}
+        setMessage(typeof result.message==="string"?result.message:"Follow the account setup instructions.");
+      }
       else if(mode==="forgot"){setMessage("If the address is registered, a password-reset link will be sent.");}
       else setMessage("Password updated. You can now sign in.");
     } catch(err){setMessage(err instanceof Error?err.message:"Could not complete request");}
