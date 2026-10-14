@@ -51,6 +51,26 @@ jobs:
             node /app/dist/smoke.js playwright
             node /app/dist/smoke.js patchright
           '
+      - name: Validate Instagram pilot is loopback-only and opt-in
+        env:
+          INSTAGRAM_PILOT_VNC_PASSWORD_PATH: ${{ github.workspace }}/experimental/browser-lab/example.proxy-map.json
+        run: |
+          docker compose -f deploy/experimental/compose.yaml -f deploy/experimental/instagram-pilot.compose.yaml --profile instagram-pilot config --quiet
+          docker compose -f deploy/experimental/compose.yaml -f deploy/experimental/instagram-pilot.compose.yaml --profile instagram-pilot config > /tmp/instagram-pilot-compose.yml
+          grep -q '127.0.0.1' /tmp/instagram-pilot-compose.yml
+          grep -q '6081' /tmp/instagram-pilot-compose.yml
+          grep -q 'INSTAGRAM_PILOT_ENABLED: "false"' /tmp/instagram-pilot-compose.yml
+          ! grep -qE '^[[:space:]]*-[[:space:]]*"?0.0.0.0:6081' /tmp/instagram-pilot-compose.yml
+      - name: Verify VNC viewer dependencies inside isolated image
+        run: |
+          docker run --rm --entrypoint /bin/sh social-browser-lab:local -ec '
+            command -v x11vnc
+            command -v websockify
+            command -v Xvfb
+            test -f /usr/share/novnc/vnc.html
+            test -f /app/dist/instagram-pilot.js
+            test -x /app/instagram-pilot-entrypoint.sh
+          '
       - name: Temporal worker initialization smoke (one activity)
         run: |
           docker run -d --rm --name browser-lab-temporal-ci -p 127.0.0.1:27233:7233 \

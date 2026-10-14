@@ -1,0 +1,32 @@
+# Compose override. Use ONLY with deploy/experimental/compose.yaml and the operator script.
+# Do not connect it to the main staging Docker network.
+services:
+  instagram-pilot:
+    image: social-browser-lab:local
+    pull_policy: never
+    profiles: [instagram-pilot]
+    restart: "no"
+    entrypoint: ["/usr/bin/tini","--","/app/instagram-pilot-entrypoint.sh"]
+    networks: [isolated_lab]
+    ports:
+      - "127.0.0.1:6081:6081"
+    environment:
+      INSTAGRAM_PILOT_ENABLED: "${INSTAGRAM_PILOT_ENABLED:-false}"
+      BROWSER_LAB_MAX_SESSIONS: "1"
+      BROWSER_LAB_CHROMIUM_PATH: /usr/bin/chromium
+    volumes:
+      - type: bind
+        source: ${INSTAGRAM_PILOT_VNC_PASSWORD_PATH:?Set a protected password file}
+        target: /run/instagram-viewer/password
+        read_only: true
+    shm_size: 256m
+    mem_limit: 896m
+    cpus: "1.0"
+    pids_limit: 160
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=400m
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    scale: 1
+    stop_grace_period: 20s
