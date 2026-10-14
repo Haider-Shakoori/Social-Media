@@ -22,7 +22,10 @@ function validImageUrl(raw:string):boolean{
   const host=url.hostname.toLowerCase();
   if(host==='localhost'||host.endsWith('.localhost')||host.endsWith('.local')||host.endsWith('.internal')||
    /^\d+\.\d+\.\d+\.\d+$/.test(host)||host.includes(':')||host==='metadata.google.internal')return false;
-  return true;
+  // Accept only a dedicated operator-approved public media hostname. This
+  // must point to media deliberately staged for Instagram's servers to fetch.
+  const hosts=(process.env.INSTAGRAM_MEDIA_ALLOWED_HOSTS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  return hosts.length>0&&hosts.includes(host);
  }catch{return false;}
 }
 type ResponseShape={id?:string;status_code?:string;permalink?:string};
