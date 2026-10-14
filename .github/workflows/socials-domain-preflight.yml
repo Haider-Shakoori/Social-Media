@@ -1,0 +1,35 @@
+name: Socials DNS and HTTPS read-only preflight
+on:
+  push:
+    branches: [ops/socials-domain-check]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Public DNS and HTTPS diagnostics
+        shell: bash
+        run: |
+          set +e
+          echo "== Authoritative name servers =="
+          dig +short NS businessos.af
+          echo "== Authoritative A records =="
+          for ns in $(dig +short NS businessos.af); do
+            echo "Resolver: $ns"
+            dig +noall +answer @"$ns" socials.businessos.af A
+          done
+          echo "== Public DNS answers =="
+          for ns in 1.1.1.1 8.8.8.8; do
+            echo "Resolver: $ns"
+            dig +time=2 +tries=1 +noall +answer @"$ns" socials.businessos.af A
+          done
+          echo "== HTTPS handshake and response =="
+          curl -sS -I --connect-timeout 4 --max-time 8 https://socials.businessos.af/ | head -15
+          echo "== VPS HTTP response by forced DNS (port 80) =="
+          curl -sS -I --connect-timeout 4 --max-time 8 --resolve socials.businessos.af:80:108.165.233.125 http://socials.businessos.af/ | head -15
+          echo "== Existing VPS HTTPS response by forced DNS =="
+          curl -k -sS -I --connect-timeout 4 --max-time 8 --resolve socials.businessos.af:443:108.165.233.125 https://socials.businessos.af/ | head -15
+          echo "Preflight complete (diagnostics only, no infrastructure changes)."
