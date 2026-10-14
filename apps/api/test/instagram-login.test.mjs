@@ -71,7 +71,7 @@ test('Instagram exchanges code on official hosts and preserves exact professiona
    if(u.pathname==='/access_token')return Response.json({access_token:'long-lived-access-token',expires_in:5184000});
    return Response.json({id:'different-identity',username:'attacker',account_type:'BUSINESS'});
   };
-  await assert.rejects(exchangeCode('instagram','code'),/Provider returned an unsuccessful response|Instagram identity mismatch/);
+  await assert.rejects(exchangeCode('instagram','code'),error=>error.stage==='instagram_identity_mismatch');
  }finally{
   globalThis.fetch=previousFetch;
   for(const [k,v] of Object.entries(before))if(v===undefined)delete process.env[k];else process.env[k]=v;
