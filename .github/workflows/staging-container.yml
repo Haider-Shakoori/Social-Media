@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate isolated Compose file
         run: |
+          cp deploy/staging/.env.staging.example deploy/staging/.env.staging
           docker compose --env-file deploy/staging/.env.staging.example -f deploy/staging/compose.yaml config --quiet
           if grep -nE '(0\.0\.0\.0:(3000|4000|5432|6379)|/var/run/docker\.sock)' deploy/staging/compose.yaml; then
             echo 'Unsafe port binding or socket mount detected'
