@@ -6,7 +6,8 @@ export async function inspectAllowlistedPage(input:InspectionRequest):Promise<In
  const profiles=process.env.BROWSER_LAB_PROFILE_DIR||'/app/profiles';
  process.umask(0o077);
  const userDataDir=await createAccountDirectory(profiles,input.accountKey);
- const proxy=await proxyForAccount(input.accountKey,process.env.BROWSER_LAB_PROXY_MAP_FILE);
+ const proxy=await proxyForAccount(input.proxyKey||input.accountKey,process.env.BROWSER_LAB_PROXY_MAP_FILE);
+ if(input.proxyKey&&!proxy)throw new Error('Proxy alias not configured');
  // Driver selectable only by operator. Patchright is restricted to test-only navigation.
  const chromium=input.driver==='patchright'
   ? (await import('patchright')).chromium as unknown as typeof import('playwright').chromium
