@@ -25,7 +25,7 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
  const [preview,setPreview]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
  useEffect(()=>{
   let live=true;setProviders([]);setPreview("");setError("");setWorkspaceId(workspaces[0]?.id||"");
-  void query<{providers:Provider[]}>("/tenants/"+tenantId+"/providers").then(d=>{if(live)setProviders(d.providers);})
+  void query<{providers:Provider[]}>("/tenants/"+tenantId+"/providers").then(d=>{if(live)setProviders(d.providers.filter(p=>["facebook","instagram","x"].includes(p.id)));})
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Could not load connector catalog");});
   return()=>{live=false;};
  },[tenantId,workspaces[0]?.id]);
