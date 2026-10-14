@@ -5,6 +5,8 @@ import {AccessService} from '../tenants/access.service';
 import {EntitlementsService,monthStartUTC} from '../billing/entitlements.service';
 import {metaPublishingBlockers,supportedMetaFormat,type PublishGate} from './guard';
 import {verifyFacebookRemote} from './reconcile';
+import {unseal} from '../social-oauth/oauth-crypto';
+import type {MetaCredentials} from '../social-oauth/meta-account';
 
 type Db=Prisma.TransactionClient;
 export async function prepareMetaTarget(db:Db,brandId:string,postId:string,connectionId:string,
@@ -21,8 +23,15 @@ export async function prepareMetaTarget(db:Db,brandId:string,postId:string,conne
  if(!version)throw new ConflictException('Post has no content version');
  const approval=version.approvals[0];
  const policy=await db.socialProviderPolicy.findUnique({where:{network:connection.platform}});
+ let loginType:MetaCredentials['loginType'];
+ if(connection.platform==='instagram'&&connection.encryptedCredentials){
+  loginType=unseal<MetaCredentials>(connection.encryptedCredentials).loginType;
+ }
+ const providerFlag=loginType==='instagram'
+  ? process.env.INSTAGRAM_IMAGE_PUBLISHING_ENABLED==='true'&&process.env.INSTAGRAM_CONNECT_ENABLED==='true'
+  : process.env.META_CONNECT_ENABLED==='true';
  const gate:PublishGate={
-  network:connection.platform,featureEnabled:process.env.META_PUBLISHING_ENABLED==='true'&&process.env.META_CONNECT_ENABLED==='true',
+  network:connection.platform,loginType,featureEnabled:process.env.META_PUBLISHING_ENABLED==='true'&&providerFlag,
   globalPaused:global?.value!==false,brandPaused:post.brand.publishingPaused,
   archived:!!post.brand.archivedAt,
   mode:connection.mode,connectionState:connection.state,connectionPaused:!!connection.pausedAt,
