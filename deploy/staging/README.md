@@ -59,3 +59,7 @@ Verify the staging instant-signup flow against the live HTTPS route; keep the ve
 ## Rollback
 
 Stop ONLY the `social-media-staging` Compose project, preserving volumes. Do not remove or restart any unrelated containers, sites, DNS zones, Docker images or services.
+
+## Client Meta OAuth onboarding (pilot)
+
+The account-connection screen now asks users to select an organization workspace and brand before authorizing an eligible Facebook Page or Instagram professional account. The OAuth callback returns to that exact context. Developer credentials are NOT bundled: until a valid approved Meta Developer App, its callback URL, access scopes, encryption key and operator testing policy are configured, the authorization button stays disabled. X remains manual-only; automatic publishing remains globally disabled. Do not enable paid X APIs or Meta publishing as part of client-linking rollout.
