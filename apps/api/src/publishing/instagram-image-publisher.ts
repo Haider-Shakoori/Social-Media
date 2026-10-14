@@ -1,5 +1,5 @@
 import {isIP} from 'node:net';
-import {PublishOutcomeUnknown} from './meta-publisher';
+import {PublishOutcomeUnknown} from './publish-errors';
 
 const GRAPH='https://graph.instagram.com/v26.0';
 const idPattern=/^[A-Za-z0-9_-]{3,255}$/;
