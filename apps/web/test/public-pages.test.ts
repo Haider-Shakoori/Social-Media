@@ -28,6 +28,6 @@ test("slugs remain unique",()=>{
  for(const list of groups)assert.equal(list.length,new Set(list).size);
 });
 test("integration claims disclose planned availability",()=>{
- assert.ok(faqItems.length>=6);assert.ok(plans.length>=3);assert.equal(platformPlans.length,10);
- assert.ok(platformPlans.every(x=>(["Planned","Review required","Manual fallback"] as string[]).includes(x.status)));
+ assert.ok(faqItems.length>=6);assert.ok(plans.length>=3);assert.equal(platformPlans.length,3);
+ assert.ok(platformPlans.every(x=>(["Pilot · disabled","Manual fallback"] as string[]).includes(x.status)));
 });
