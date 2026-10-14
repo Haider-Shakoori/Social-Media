@@ -1,5 +1,5 @@
 import {ConflictException,ForbiddenException,Injectable,NotFoundException,ServiceUnavailableException} from '@nestjs/common';
-import {Prisma,type Subscription} from '@prisma/client';
+import {Prisma} from '@prisma/client';
 import {PrismaService} from '../prisma/prisma.service';
 import {AccessService} from '../tenants/access.service';
 import {EntitlementsService,monthStartUTC} from '../billing/entitlements.service';
@@ -24,12 +24,13 @@ export async function prepareMetaTarget(db:Db,brandId:string,postId:string,conne
   network:connection.platform,featureEnabled:process.env.META_PUBLISHING_ENABLED==='true'&&process.env.META_CONNECT_ENABLED==='true',
   globalPaused:global?.value!==false,brandPaused:post.brand.publishingPaused,
   archived:!!post.brand.archivedAt,
-  mode:connection.mode,connectionState:connection.state,tokenExpiresAt:connection.tokenExpiresAt,
+  mode:connection.mode,connectionState:connection.state,connectionPaused:!!connection.pausedAt,
+  tokenExpiresAt:connection.tokenExpiresAt,
   scopes:connection.tokenScopes,policyState:policy?.rolloutState||'PLANNED',
   operatorEnabled:policy?.operatorEnabled===true,apiApproved:policy?.apiApproved===true,
   productionVerified:policy?.productionVerified===true,
   subscriptionActive,approvedVersionMatches:(!approvedVersionId||approvedVersionId===version.id)&&
-   ['APPROVED','SCHEDULED'].includes(post.state),
+   ['APPROVED','SCHEDULED','PUBLISHING'].includes(post.state),
   approvalGranted:approval?.state==='APPROVED'&&!!approval.approvedAt,
   approvedByAnotherUser:!!approval?.requestedById&&!!approval?.reviewedById&&
    approval.requestedById!==approval.reviewedById,
@@ -50,8 +51,8 @@ export class PublishingService {
   if(!Number.isFinite(due.getTime())||due.getTime()>Date.now()+90*86400000||
     due.getTime()<Date.now()-60_000)throw new ConflictException('Publish time outside allowed window');
   return this.billing.inTransaction(t,async(tx,subscription)=>{
-   const existing=await tx.postTarget.findUnique({where:{
-    postId_socialConnectionId:{postId:input.postId,socialConnectionId:input.connectionId}}});
+   const existing=await tx.postTarget.findFirst({where:{postId:input.postId,
+    socialConnectionId:input.connectionId,post:{brandId:b},socialConnection:{brandId:b}}});
    if(existing){
     if(existing.state==='SCHEDULED')return {target:{id:existing.id,state:existing.state},alreadyQueued:true};
     throw new ConflictException('Target already processed; never resend automatically');
