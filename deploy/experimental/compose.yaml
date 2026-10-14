@@ -1,0 +1,50 @@
+name: social-media-experimental-browser-lab
+services:
+  temporal-dev:
+    image: temporalio/temporal:latest
+    profiles: [experimental]
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/var/lib/temporal/temporal.db"]
+    restart: "no"
+    networks: [isolated_lab]
+    volumes: [temporal_lab_data:/var/lib/temporal]
+    mem_limit: 640m
+    pids_limit: 128
+    security_opt: [no-new-privileges:true]
+    # Deliberately no host-published 7233/8233 ports.
+  browser-lab:
+    build:
+      context: ../..
+      dockerfile: deploy/experimental/Dockerfile
+    profiles: [experimental]
+    restart: "no"
+    depends_on: [temporal-dev]
+    networks: [isolated_lab]
+    init: true
+    environment:
+      EXPERIMENTAL_BROWSER_LAB_ENABLED: "${EXPERIMENTAL_BROWSER_LAB_ENABLED:-false}"
+      BROWSER_LAB_ALLOWED_ORIGINS: "${BROWSER_LAB_ALLOWED_ORIGINS:-}"
+      BROWSER_LAB_PROXY_MAP_FILE: /run/browser-lab/proxies.json
+      BROWSER_LAB_CHROMIUM_PATH: /usr/bin/chromium
+      BROWSER_LAB_PROFILE_DIR: /app/profiles
+      TEMPORAL_ADDRESS: temporal-dev:7233
+    volumes:
+      - browser_lab_profiles:/app/profiles
+      - type: bind
+        source: ${BROWSER_LAB_PROXY_MAP_PATH:-../../experimental/browser-lab/example.proxy-map.json}
+        target: /run/browser-lab/proxies.json
+        read_only: true
+    shm_size: 256m
+    mem_limit: 896m
+    cpus: "1.0"
+    pids_limit: 160
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    # No ports exposed, no Docker socket, no connection to production/staging networks.
+volumes:
+  temporal_lab_data:
+  browser_lab_profiles:
+networks:
+  isolated_lab:
+    driver: bridge
