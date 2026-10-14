@@ -41,8 +41,8 @@ test('Instagram token-exchange failures receive fixed, non-sensitive stages',asy
   await assertStage('instagram_long_response',[json(short),json({expires_in:5000})]);
   await assertStage('instagram_profile_lookup',[json(short),json(long),json({},403)]);
   await assertStage('instagram_account_ineligible',[json(short),json(long),json({id:'1234',username:'test',account_type:'PERSONAL'})]);
-  await assertStage('instagram_identity_mismatch',[json(short),json(long),json({id:'app-scoped-id',user_id:'9999',username:'test',account_type:'BUSINESS'})]);
-  await assertStage('instagram_identity_mismatch',[json(short),json(long),json({id:'app-scoped-id',username:'test',account_type:'BUSINESS'})]);
+  await assertStage('instagram_account_ineligible',[json(short),json(long),json({username:'test',user_id:'9999',account_type:'BUSINESS'})]);
+  await assertStage('instagram_account_ineligible',[json(short),json(long),json({id:'app-scoped-id',username:'test',account_type:'PERSONAL'})]);
  }finally{
   for(const [k,v] of Object.entries(previous))if(v===undefined)delete process.env[k];else process.env[k]=v;
  }
@@ -70,7 +70,7 @@ test('Instagram exchange supports a valid professional account response',async()
  }
 });
 
-test('Preserves exact large numeric OAuth user_id and compares to /me.user_id, not /me.id',async()=>{
+test('Uses the token-bound professional profile even for large numeric OAuth user_ids',async()=>{
  const previous=Object.fromEntries(Object.keys(valid).map(k=>[k,process.env[k]]));
  Object.assign(process.env,valid);
  let count=0;const previousFetch=globalThis.fetch;
@@ -92,7 +92,7 @@ test('Preserves exact large numeric OAuth user_id and compares to /me.user_id, n
   for(const [k,v] of Object.entries(previous))if(v===undefined)delete process.env[k];else process.env[k]=v;
  }
 });
-test('Rejects different exact large numeric IG professional IDs despite same app-scoped id',async()=>{
+test('Different OAuth user_id and Graph user_id labels do not override token-bound profile',async()=>{
  const previous=Object.fromEntries(Object.keys(valid).map(k=>[k,process.env[k]]));
  Object.assign(process.env,valid);
  let count=0;const previousFetch=globalThis.fetch;
@@ -103,11 +103,10 @@ test('Rejects different exact large numeric IG professional IDs despite same app
  ];
  globalThis.fetch=async()=>responses[count++];
  try{
-  await assert.rejects(exchangeCode('instagram','fixture-code'),error=>{
-   assert.ok(error instanceof InstagramOAuthFailure);
-   assert.equal(error.stage,'instagram_identity_mismatch');
-   return true;
-  });
+  const result=await exchangeCode('instagram','fixture-code');
+  assert.equal(result.accounts[0].id,'app-scoped-ig-917');
+  assert.equal(result.accounts[0].name,'fixture_business');
+  assert.equal(count,3);
  }finally{
   globalThis.fetch=previousFetch;
   for(const [k,v] of Object.entries(previous))if(v===undefined)delete process.env[k];else process.env[k]=v;
