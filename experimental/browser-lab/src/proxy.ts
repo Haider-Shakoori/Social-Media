@@ -9,7 +9,7 @@ function validateProxy(p:unknown):AccountProxy{
  if(typeof entry.server!=='string')throw new Error('Missing proxy endpoint');
  const url=new URL(entry.server);
  if(!['http:','https:','socks5:'].includes(url.protocol)||!url.hostname||url.username||url.password||
-   url.search||url.hash||url.pathname!=='/')throw new Error('Invalid proxy server URL');
+   url.search||url.hash||(url.pathname!==''&&url.pathname!=='/'))throw new Error('Invalid proxy server URL');
  if(url.protocol==='socks5:'&&(entry.username!==undefined||entry.password!==undefined))
   throw new Error('Authenticated SOCKS5 is not supported by Chromium; use supported HTTP proxy authentication');
  for(const key of ['username','password','bypass']){
