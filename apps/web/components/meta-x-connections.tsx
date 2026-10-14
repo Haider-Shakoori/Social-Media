@@ -25,7 +25,19 @@ export function MetaXConnections({tenantId,workspaceId,brandId}:{tenantId:string
  useEffect(()=>{
   const q=new URLSearchParams(window.location.search);
   const id=q.get("socialAttempt"),issue=q.get("socialConnectError");
-  if(issue)setError("Authorization was cancelled or could not be completed. Check credentials and app approval.");
+  if(issue){
+   const messages:Record<string,string>={
+    authorization_cancelled:"Instagram authorization was cancelled. Retry and approve access in Instagram.",
+    instagram_short_exchange:"Instagram returned an authorization code, but the first token exchange failed. Check the Instagram App Secret (not the access token) and the exact OAuth redirect URI in Meta Developer settings.",
+    instagram_short_response:"Instagram returned an unexpected token response. Check the Instagram app configuration and retry.",
+    instagram_long_exchange:"The Instagram temporary token was received, but the long-lived token exchange failed. Check the Instagram app credentials and API access.",
+    instagram_long_response:"Instagram returned an invalid long-lived token response. Please retry the authorization.",
+    instagram_profile_lookup:"Instagram issued an access token, but account details could not be loaded. Confirm the account and instagram_business_basic permission in Meta.",
+    instagram_account_ineligible:"Instagram did not return an eligible Business or Creator account. Check the account type in Instagram settings.",
+    instagram_identity_mismatch:"Instagram returned mismatched account identities. Restart authorization with one Instagram account."
+   };
+   setError(messages[issue]||"Instagram authorization could not be completed. Retry or check your Meta Developer app configuration.");
+  }
   if(!id)return;
   let active=true;
   void apiCall<{accounts:Choice[];brandId:string}>("/social/oauth/attempts/"+id+"/accounts")

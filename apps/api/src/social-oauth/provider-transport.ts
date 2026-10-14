@@ -8,6 +8,13 @@ export type PendingAccount={
 };
 export type AccountResponse={accounts:PendingAccount[]};
 
+/** Safe, enumerable failure stages. Never include upstream response bodies, tokens or codes. */
+export type InstagramOAuthStage=
+ 'instagram_short_exchange'|'instagram_short_response'|'instagram_long_exchange'|'instagram_long_response'|
+ 'instagram_profile_lookup'|'instagram_account_ineligible'|'instagram_identity_mismatch';
+export class InstagramOAuthFailure extends Error {
+ constructor(readonly stage:InstagramOAuthStage){super('Instagram OAuth failed at '+stage);this.name='InstagramOAuthFailure';}
+}
 const GRAPH_VERSION='v26.0';
 function requireConfig(...keys:string[]){
  for(const k of keys)if(!process.env[k])throw new Error('Missing '+k+' environment variable');
@@ -67,6 +74,11 @@ async function json<T>(url:string,opts:RequestInit):Promise<T>{
  if(!response.ok)throw new BadGatewayException('Provider returned an unsuccessful response');
  try{return await response.json() as T;}catch{throw new BadGatewayException('Invalid provider response');}
 }
+/** Only a fixed diagnostic stage survives upstream request failures. */
+async function instagramJson<T>(stage:InstagramOAuthStage,url:string,opts:RequestInit):Promise<T>{
+ try{return await json<T>(url,opts);}
+ catch{throw new InstagramOAuthFailure(stage);}
+}
 type MetaToken={access_token:string;expires_in?:number};
 type MetaPage={id:string;name?:string;access_token?:string;instagram_business_account?:{id:string;username?:string}};
 export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:string):Promise<AccountResponse>{
@@ -114,28 +126,28 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
    redirect_uri:requestUrl('instagram'),code});
   // Unlike Facebook Login, Instagram Business Login exchanges its code on api.instagram.com.
   type IgShort={access_token?:string;user_id?:string|number;permissions?:string[]};
-  const response=await json<IgShort|{data?:IgShort[]}>(
-   'https://api.instagram.com/oauth/access_token',{
+  const response=await instagramJson<IgShort|{data?:IgShort[]}>(
+   'instagram_short_exchange','https://api.instagram.com/oauth/access_token',{
     method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
   const short:IgShort='data' in response?
    (Array.isArray(response.data)&&response.data.length===1?response.data[0]:{} as IgShort):
    response as IgShort;
   if(typeof short.access_token!=='string'||short.access_token.length<10)
-   throw new BadGatewayException('Instagram authorization response invalid');
+   throw new InstagramOAuthFailure('instagram_short_response');
   const exchange=new URLSearchParams({grant_type:'ig_exchange_token',
    client_secret:process.env.INSTAGRAM_APP_SECRET!,access_token:short.access_token});
-  const long=await json<{access_token?:string;expires_in?:number}>(
-   'https://graph.instagram.com/access_token?'+exchange,{method:'GET'});
+  const long=await instagramJson<{access_token?:string;expires_in?:number}>(
+   'instagram_long_exchange','https://graph.instagram.com/access_token?'+exchange,{method:'GET'});
   if(typeof long.access_token!=='string'||long.access_token.length<10)
-   throw new BadGatewayException('Instagram long-lived token missing');
-  const identity=await json<{id?:string;user_id?:string;username?:string;account_type?:string}>(
-   'https://graph.instagram.com/me?fields=id,username,account_type',{
+   throw new InstagramOAuthFailure('instagram_long_response');
+  const identity=await instagramJson<{id?:string;user_id?:string;username?:string;account_type?:string}>(
+   'instagram_profile_lookup','https://graph.instagram.com/me?fields=id,username,account_type',{
     method:'GET',headers:{Authorization:'Bearer '+long.access_token}});
   if(!identity.id||typeof identity.id!=='string'||
    !['BUSINESS','MEDIA_CREATOR','CREATOR'].includes(identity.account_type||''))
-   throw new BadGatewayException('Eligible Instagram professional account not returned');
+   throw new InstagramOAuthFailure('instagram_account_ineligible');
   if(short.user_id&&String(short.user_id)!==identity.id)
-   throw new BadGatewayException('Instagram identity mismatch');
+   throw new InstagramOAuthFailure('instagram_identity_mismatch');
   // Requested scopes are not proof of granted scopes. Only record explicit grants when returned.
   const requested=(process.env.INSTAGRAM_SCOPES||'instagram_business_basic').split(',').map(x=>x.trim());
   const scopes=Array.isArray(short.permissions)?
