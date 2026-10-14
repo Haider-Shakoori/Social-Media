@@ -8,6 +8,7 @@ type Post={id:string;state:string;createdAt:string;versions:Version[]};
 type Campaign={id:string;name:string};
 type Slot={id:string;postId:string;network:string;scheduledAt:string;state:string};
 type Approval={id:string;state:string;postVersion:{caption:string;number:number;postId:string};requestedById:string|null;expiresAt:string};
+type PublishTarget={id:string;postId:string;state:string;scheduledAt:string|null;attemptedAt:string|null;remoteId:string|null;lastFailureCode:string|null};
 type Metrics={source:string;windowDays:number;metrics:Record<string,number>;dailyDrafts:{date:string;count:number}[];limitation:string;
  providerReach:null;providerImpressions:null;providerEngagement:null};
 type Protection={brand:{publishingPaused:boolean;pauseReason:string;connections:{id:string;platform:string;state:string}[]};
@@ -21,9 +22,10 @@ async function req<T>(url:string,method="GET",body?:unknown):Promise<T>{
 }
 export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;workspaceId:string;brandId:string}){
  const root="/tenants/"+tenantId+"/workspaces/"+workspaceId+"/brands/"+brandId;
- const [tab,setTab]=useState<"create"|"posts"|"calendar"|"review"|"security"|"insights">("create");
+ const [tab,setTab]=useState<"create"|"posts"|"calendar"|"review"|"security"|"insights"|"publish">("create");
  const [posts,setPosts]=useState<Post[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([]);
  const [slots,setSlots]=useState<Slot[]>([]),[approvals,setApprovals]=useState<Approval[]>([]);
+ const [targets,setTargets]=useState<PublishTarget[]>([]);
  const [analytics,setAnalytics]=useState<Metrics|null>(null),[protection,setProtection]=useState<Protection|null>(null);
  const [caption,setCaption]=useState(""),[topic,setTopic]=useState(""),[format,setFormat]=useState("announcement"),[language,setLanguage]=useState("en"),[network,setNetwork]=useState("facebook");
  const [headline,setHeadline]=useState(""),[subtitle,setSubtitle]=useState(""),[media,setMedia]=useState(""),[campaign,setCampaign]=useState("");
@@ -32,15 +34,17 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
  const [error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
  const [uploadFile,setUploadFile]=useState<File|null>(null),[uploadReady,setUploadReady]=useState(false);
  const refresh=useCallback(async()=>{
-  const [content,calendar,reviews,security,stats]=await Promise.all([
+  const [content,calendar,reviews,security,stats,publishing]=await Promise.all([
    req<{posts:Post[];campaigns:Campaign[]}>(root+"/studio"),
    req<{slots:Slot[]}>(root+"/calendar"),
    req<{approvals:Approval[]}>(root+"/approvals"),
    req<Protection>(root+"/protection"),
    req<Metrics>(root+"/analytics?days=30"),
+   req<{targets:PublishTarget[]}>(root+"/publishing/targets"),
   ]);
   setPosts(content.posts);setCampaigns(content.campaigns);setSlots(calendar.slots);
   setApprovals(reviews.approvals);setProtection(security);setAnalytics(stats);
+  setTargets(publishing.targets);
  },[root]);
  useEffect(()=>{
   let live=true;
@@ -139,10 +143,23 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
   <h2 className="mt-3 text-2xl font-bold">Creative, review and operations</h2>
   <p className="mt-2 text-sm text-slate-300">All content is private to this brand. No automatic social publishing is enabled.</p>
   <nav aria-label="Content studio" className="mt-6 flex flex-wrap gap-2">{([
-   ["create","Create"],["posts","Drafts"],["calendar","Calendar"],["review","Approvals"],["security","Protection"],["insights","Analytics"]
+   ["create","Create"],["posts","Drafts"],["calendar","Calendar"],["review","Approvals"],["publish","Publish status"],["security","Protection"],["insights","Analytics"]
   ] as const).map(([key,title])=><button type="button" key={key} onClick={()=>setTab(key)} className={"rounded-xl px-4 py-2 text-sm "+(tab===key?"bg-emerald-300 font-bold text-slate-950":"border border-white/15 text-slate-200")}>{title}</button>)}</nav>
   {error&&<p className="mt-5 rounded-lg border border-rose-400/30 p-3 text-sm text-rose-200" role="alert">{error}</p>}
   {notice&&<p className="mt-5 rounded-lg border border-emerald-400/30 p-3 text-sm text-emerald-200" role="status">{notice}</p>}
+  {tab==="publish"&&<div className="mt-6 space-y-4">
+   <h3 className="font-bold">Instagram and Facebook publishing status</h3>
+   <p className="text-sm text-slate-400">Live publishing is disabled by default. Each post requires independent approval, verified provider permission and operator release gates. Unknown outcomes are never automatically retried.</p>
+   <button type="button" className="rounded-lg border border-white/20 px-4 py-2 text-sm" onClick={()=>void run(refresh)} disabled={busy}>Refresh status</button>
+   {targets.length===0?<p className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">No publishing jobs have been queued for this brand.</p>:
+    targets.map(target=><article className="rounded-xl border border-white/10 bg-[#07131b] p-4" key={target.id}>
+     <p className="font-semibold">{target.state} <span className="font-normal text-xs text-slate-400">· Post {target.postId.slice(0,8)}</span></p>
+     <p className="mt-2 text-xs text-slate-300">Scheduled: {target.scheduledAt?new Date(target.scheduledAt).toLocaleString():"Not scheduled"} · Attempted: {target.attemptedAt?new Date(target.attemptedAt).toLocaleString():"Not attempted"}</p>
+     {target.remoteId&&<p className="mt-1 text-xs text-slate-400">Provider media ID: {target.remoteId}</p>}
+     {target.lastFailureCode&&<p className="mt-1 text-xs text-amber-200">Status detail: {target.lastFailureCode}</p>}
+     {target.state==="UNCERTAIN"&&<p className="mt-2 text-sm text-amber-200">Check this exact post in Instagram before requesting manual reconciliation. Do not publish the same draft again.</p>}
+    </article>)}
+  </div>}
   {tab==="create"&&<div className="mt-6 grid gap-6 lg:grid-cols-2">
    <div className="space-y-4">
     <h3 className="font-bold">Brand-aware caption</h3>
