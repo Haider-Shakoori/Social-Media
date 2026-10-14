@@ -457,6 +457,13 @@ try {
  const bOne=list.data.brands.find(x=>x.name==='Brand One');
  assert.ok(bOne?.id);
  const base='/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+bOne.id+'/social';
+ const publishing='/tenants/'+idB+'/workspaces/'+wsB+'/brands/'+bOne.id+'/publishing';
+ status(await call('GET',publishing+'/targets',undefined,b.cookie),200,'tenant can inspect publisher queue without secrets');
+ status(await call('GET',publishing+'/targets',undefined,aCookie),404,'cross-tenant queue access forbidden');
+ status(await call('POST',publishing+'/targets',{postId:'00000000-0000-4000-8000-000000000001',
+  connectionId:'00000000-0000-4000-8000-000000000002'},b.cookie),503,
+  'default-disabled staging publisher cannot queue or send');
+
  let result=await call('GET',base+'/readiness',undefined,b.cookie);
  status(result,200,'owner can view pilot credentials readiness');
  assert.deepEqual(new Set(result.data.providers.map(p=>p.network)),new Set(['meta','x']));
