@@ -13,7 +13,7 @@ export function PlatformProviders(){
   const res=await fetch(API+"/platform/providers",{credentials:"include",cache:"no-store"});
   const json=await res.json().catch(()=>({}));
   if(!res.ok)throw new Error(typeof json.message==="string"?json.message:"Provider registry unavailable");
-  const list=json.providers as Provider[];
+  const list=(json.providers as Provider[]).filter(p=>["facebook","instagram","x"].includes(p.id));
   setProviders(list);
   setState(Object.fromEntries(list.map(p=>[p.id,p.rollout])));
   setNotes(Object.fromEntries(list.map(p=>[p.id,p.notes])));
@@ -36,7 +36,7 @@ export function PlatformProviders(){
  return <section className="mt-8 rounded-3xl border border-white/10 bg-[#102630] p-7">
   <div><p className="text-xs font-bold tracking-widest text-emerald-300">PROVIDER RELEASE CONTROLS</p>
    <h2 className="mt-3 text-2xl font-bold">Official provider policy registry</h2>
-   <p className="mt-3 text-sm leading-7 text-slate-400">Change planning and approval statuses only. This screen cannot grant API scopes, bypass provider review, or activate automatic publishing.</p>
+   <p className="mt-3 text-sm leading-7 text-slate-400">Only Facebook Pages, Instagram professional accounts and X are shown during the pilot. Status editing cannot grant API scopes, bypass provider review, or activate automatic publishing.</p>
   </div>
   {error&&<p role="alert" className="mt-5 text-sm text-rose-200">{error}</p>}
   {message&&<p role="status" className="mt-5 text-sm text-emerald-200">{message}</p>}
