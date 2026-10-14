@@ -40,9 +40,9 @@ Builds can briefly use much more than the runtime memory limit. On this constrai
 - Frontend: `127.0.0.1:24601` only.
 - API: `127.0.0.1:24602` only. Public API path: `/api/v1/`.
 - PostgreSQL, Redis and Mailpit have **zero published ports** and unique volumes/network.
-- Signup off; no social publishing, paid provider API connections, remote AI generation, reminder scheduling, CMS publishing, or public indexing.
+- Controlled staging signup on; email verification is bypassed **only** when `EMAIL_VERIFICATION_REQUIRED=false` is explicitly set. New users are signed in immediately; no live social publishing, paid provider API connections, remote AI generation, reminder scheduling, CMS publishing, or public indexing.
 - No payment provider enabled. The only pilot network UI is Meta (Facebook/Instagram) and X. Both **live OAuth disabled** until credentials and cost review; all other providers deferred.
-- Email stays in private Mailpit for controlled testing. No public email delivery claim.
+- Email stays in private Mailpit for password resets and invitations during testing; new client signup does not send verification messages. Mailpit is not public email delivery. Password resets/invites will not reach public users until real SMTP is configured.
 - In future, route HTTPS through a domain-specific, explicitly reviewed reverse proxy that serves `/api/v1/` to port 24602 and all other paths to 24601. The proxy must preserve Host, request identity, HTTPS scheme and Set-Cookie. A separate pre-existing Caddy already holds public 443; do not override it.
 - Back up PostgreSQL and Redis separately; never copy live project secrets or data.
 
@@ -54,7 +54,7 @@ curl -fsSI http://127.0.0.1:24601/
 docker compose --env-file deploy/staging/.env.staging -f deploy/staging/compose.yaml ps
 ```
 
-Full browser registration/verification/login flows must be exercised only after dedicated HTTPS reverse proxy and authorized test SMTP are ready. Never mistake GitHub unit/E2E or local health checks for live-domain verification.
+Verify the staging instant-signup flow against the live HTTPS route; keep the verified-email path covered in regular CI for other deployments. Never mistake GitHub unit/E2E or local health checks for live-domain verification.
 
 ## Rollback
 

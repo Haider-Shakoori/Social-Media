@@ -28,22 +28,32 @@ export class AuthService {
     const value=process.env.WEB_BASE_URL || 'http://localhost:3000';
     return new URL(value).origin;
   }
-  async register(input:{email:string;password:string;fullName:string},ip:string){
+  async register(input:{email:string;password:string;fullName:string},ip:string,userAgent=''){
+    // Opt-in for isolated test environments only; production retains email verification by default.
+    const skipVerification=process.env.EMAIL_VERIFICATION_REQUIRED==='false';
     if(process.env.REGISTRATION_ENABLED!=='true') throw new ServiceUnavailableException('Registration is not open');
     await this.limiter.check('register-ip',ip,10,3600);
     await this.limiter.check('register-email',input.email,3,3600);
-    this.mail.ensureConfigured();
+    if(!skipVerification)this.mail.ensureConfigured();
     const exists=await this.db.user.findUnique({where:{email:input.email},select:{id:true}});
-    if(exists)return {message:'If this address can register, verification instructions will be emailed.'};
+    if(exists)return {message:'If this address is eligible, account instructions will be available.'};
     const hashed=await hashPassword(input.password);
     let user;
     try {
-      user=await this.db.user.create({data:{email:input.email,passwordHash:hashed,fullName:input.fullName}});
+      user=await this.db.user.create({data:{email:input.email,passwordHash:hashed,fullName:input.fullName,
+        // Controlled staging bypass only; does not disable email checks for other environments.
+        ...(skipVerification?{emailVerifiedAt:new Date()}:{}),
+      }});
     } catch(error) {
       if(typeof error==='object' && error!==null && 'code' in error && error.code==='P2002') {
-        return {message:'If this address can register, verification instructions will be emailed.'};
+        return {message:'If this address is eligible, account instructions will be available.'};
       }
       throw error;
+    }
+    if(skipVerification){
+      const token=createToken(),expiresAt=hours(24*7);
+      await this.db.session.create({data:{userId:user.id,tokenHash:hashToken(token),expiresAt,userAgent:userAgent.slice(0,300)}});
+      return {message:'Account created. Signed in.',user:publicUser(user),token,expiresAt};
     }
     const token=await this.newEmailToken(user.id,'VERIFY_EMAIL',24);
     const url=this.websiteUrl+'/verify-email?token='+encodeURIComponent(token);

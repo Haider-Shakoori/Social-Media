@@ -27,7 +27,7 @@ export default function HomePage() {
             <Link className="rounded-xl bg-emerald-300 px-7 py-3.5 font-bold text-slate-950 transition hover:bg-emerald-200" href="/features">Explore the platform</Link>
             <Link className="rounded-xl border border-slate-600 px-7 py-3.5 font-bold text-white transition hover:bg-white/10" href="/register">Early access status <span aria-hidden="true">↗</span></Link>
           </div>
-          <p className="mt-5 text-sm text-slate-500">Registration and live publishing are not yet available. This website previews the intended product.</p>
+          <p className="mt-5 text-sm text-slate-500">Client registration is available for staging tests. Live publishing and paid social APIs remain disabled.</p>
         </div>
         <div className="mt-16 overflow-hidden rounded-[28px] border border-white/15 bg-[#102630] shadow-[0_30px_110px_rgba(0,0,0,.35)]" aria-label="Illustrative social content planning dashboard">
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-7">

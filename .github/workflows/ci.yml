@@ -66,3 +66,12 @@ jobs:
             sleep 1
           done
           node apps/api/test/e2e.mjs || { cat /tmp/social-api.log; exit 1; }
+
+      - name: Instant registration staging flow (no email confirmation)
+        run: |
+          (cd apps/api && EMAIL_VERIFICATION_REQUIRED=false API_PORT=4001 node dist/main.js > /tmp/social-instant-signup.log 2>&1 &)
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4001/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          node apps/api/test/staging-instant-signup.mjs || { cat /tmp/social-instant-signup.log; exit 1; }
