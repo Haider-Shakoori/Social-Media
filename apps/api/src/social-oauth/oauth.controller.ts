@@ -20,6 +20,18 @@ export class BrandSocialOAuthController{
   @Param('network')network:string){
   return this.service.start(req.authUserId,req.authSessionId,tenantId,workspaceId,brandId,validated(oauthNetwork,network));
  }
+ @Post('accounts/:id/health-check')
+ health(@Req() req:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) tenantId:string,
+  @Param('workspaceId',new ParseUUIDPipe()) workspaceId:string,@Param('brandId',new ParseUUIDPipe()) brandId:string,
+  @Param('id',new ParseUUIDPipe()) id:string){
+  return this.service.checkAccount(req.authUserId,tenantId,workspaceId,brandId,id);
+ }
+ @Post('accounts/:id/refresh')
+ refresh(@Req() req:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) tenantId:string,
+  @Param('workspaceId',new ParseUUIDPipe()) workspaceId:string,@Param('brandId',new ParseUUIDPipe()) brandId:string,
+  @Param('id',new ParseUUIDPipe()) id:string){
+  return this.service.refreshAccount(req.authUserId,tenantId,workspaceId,brandId,id);
+ }
  @Post('accounts/:id/disconnect')
  disconnect(@Req() req:AuthRequest,@Param('tenantId',new ParseUUIDPipe()) tenantId:string,
   @Param('workspaceId',new ParseUUIDPipe()) workspaceId:string,@Param('brandId',new ParseUUIDPipe()) brandId:string,
