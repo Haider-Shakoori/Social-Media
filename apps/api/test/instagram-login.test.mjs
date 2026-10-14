@@ -30,6 +30,7 @@ test('Instagram OAuth is separate from Facebook and requires exact HTTPS callbac
   assert.equal(new URL(authorizeUrl('instagram','test')).searchParams.get('scope'),process.env.INSTAGRAM_SCOPES);
   process.env.INSTAGRAM_SCOPES='instagram_business_basic,pages_manage_posts';
   assert.throws(()=>authorizeUrl('instagram','state-test'),/Invalid INSTAGRAM_SCOPES/);
+  process.env.INSTAGRAM_SCOPES='instagram_business_basic';
   process.env.INSTAGRAM_REDIRECT_URI='http://outside.invalid/callback';
   assert.throws(()=>authorizeUrl('instagram','state-test'),/HTTPS/);
  }finally{
