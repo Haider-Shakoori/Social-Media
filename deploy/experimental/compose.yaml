@@ -12,6 +12,8 @@ services:
     security_opt: [no-new-privileges:true]
     # Deliberately no host-published 7233/8233 ports.
   browser-lab:
+    image: social-browser-lab:local
+    pull_policy: never
     build:
       context: ../..
       dockerfile: deploy/experimental/Dockerfile
@@ -22,6 +24,7 @@ services:
     init: true
     environment:
       EXPERIMENTAL_BROWSER_LAB_ENABLED: "${EXPERIMENTAL_BROWSER_LAB_ENABLED:-false}"
+      BROWSER_LAB_MAX_SESSIONS: "1"
       BROWSER_LAB_ALLOWED_ORIGINS: "${BROWSER_LAB_ALLOWED_ORIGINS:-}"
       BROWSER_LAB_PROXY_MAP_FILE: /run/browser-lab/proxies.json
       BROWSER_LAB_CHROMIUM_PATH: /usr/bin/chromium
@@ -37,6 +40,7 @@ services:
     mem_limit: 896m
     cpus: "1.0"
     pids_limit: 160
+    scale: 1
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
