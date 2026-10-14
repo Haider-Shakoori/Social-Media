@@ -46,7 +46,7 @@ export class OAuthService{
    }}),
    this.db.socialConnection.findMany({where:{brandId,platform:{in:['facebook','instagram','x']}},select:{
     id:true,platform:true,externalAccountId:true,externalAccountName:true,state:true,tokenExpiresAt:true,
-    connectedAt:true,tokenScopes:true,
+    connectedAt:true,tokenScopes:true,lastHealthCheckedAt:true,lastHealthReason:true,
    },orderBy:{createdAt:'desc'}}),
   ]);
   return {providers:['meta','x'].map(network=>({
