@@ -15,6 +15,10 @@ on:
       - 'deploy/staging/**'
       - '.dockerignore'
       - '.github/workflows/staging-container.yml'
+      - 'apps/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
 
 permissions:
