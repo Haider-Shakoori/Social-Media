@@ -117,8 +117,9 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
   const response=await json<IgShort|{data?:IgShort[]}>(
    'https://api.instagram.com/oauth/access_token',{
     method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
-  const short='data' in response?
-   (Array.isArray(response.data)&&response.data.length===1?response.data[0]:{} as IgShort):response;
+  const short:IgShort='data' in response?
+   (Array.isArray(response.data)&&response.data.length===1?response.data[0]:{} as IgShort):
+   response as IgShort;
   if(typeof short.access_token!=='string'||short.access_token.length<10)
    throw new BadGatewayException('Instagram authorization response invalid');
   const exchange=new URLSearchParams({grant_type:'ig_exchange_token',
