@@ -7,6 +7,7 @@ import {EntitlementsService} from '../billing/entitlements.service';
 import {randomUrlToken,tokenHash,seal,unseal} from './oauth-crypto';
 import {authorizeUrl,exchangeCode,hasOAuthConfig,type OAuthNetwork,type PendingAccount} from './provider-transport';
 import type {Prisma} from '@prisma/client';
+import {inspectMetaAccount,refreshMetaAccount,MetaAccessError,metaScopeHealth,type MetaAccount} from './meta-account';
 type ConnectNetwork='meta'|'x';
 type Vault={accounts:PendingAccount[]};
 @Injectable()
@@ -45,7 +46,7 @@ export class OAuthService{
    }}),
    this.db.socialConnection.findMany({where:{brandId,platform:{in:['facebook','instagram','x']}},select:{
     id:true,platform:true,externalAccountId:true,externalAccountName:true,state:true,tokenExpiresAt:true,
-    connectedAt:true,tokenScopes:true,
+    connectedAt:true,tokenScopes:true,lastHealthCheckedAt:true,lastHealthReason:true,
    },orderBy:{createdAt:'desc'}}),
   ]);
   return {providers:['meta','x'].map(network=>({
@@ -142,11 +143,14 @@ export class OAuthService{
     const sub=await tx.subscription.findUniqueOrThrow({where:{tenantId}});
     await this.entitlement.assertCount(tx,sub,'CONNECTIONS',1);
    }
+   const initialHealth=platform==='x'?null:metaScopeHealth(platform,account.scopes,Boolean(account.userAccessToken));
    const data={
-    mode:'OFFICIAL' as const,state:'CONNECTED' as const,externalAccountName:account.name,
-    encryptedCredentials:seal({accessToken:account.accessToken,refreshToken:account.refreshToken}),
+    mode:'OFFICIAL' as const,state:initialHealth?.state??'CONNECTED' as const,externalAccountName:account.name,
+    encryptedCredentials:seal({accessToken:account.accessToken,refreshToken:account.refreshToken,userAccessToken:account.userAccessToken}),
     tokenExpiresAt:account.expiresAt?new Date(account.expiresAt):null,
     tokenScopes:account.scopes,connectedAt:new Date(),
+    lastHealthCheckedAt:initialHealth?new Date():null,
+    lastHealthReason:initialHealth?.reason??null,
    };
    const linked=await tx.socialConnection.upsert({where:{
      brandId_platform_externalAccountId:{brandId:attempt.brandId,platform,externalAccountId:account.id},
@@ -156,8 +160,67 @@ export class OAuthService{
      details:{platform,brandId:attempt.brandId,accountId:account.id},
    }});
    return {account:{id:linked.id,platform,name:linked.externalAccountName,state:linked.state},
-    canPublish:false,notice:'Linked for a controlled test. Publishing is not implemented.'};
+    canPublish:false,notice:initialHealth?.missingScopes.length?'Linked with limited permissions. Grant required Meta scopes before publishing.':'Linked for a controlled test. Publishing is not enabled.'};
   });
+ }
+ private async metaRecord(userId:string,tenantId:string,workspaceId:string,brandId:string,connectionId:string){
+  const {brand,tenantId:owned}=await this.manager(userId,brandId);
+  if(tenantId!==owned||brand.workspace.id!==workspaceId)throw new NotFoundException('Brand unavailable');
+  const record=await this.db.socialConnection.findFirst({where:{id:connectionId,brandId}});
+  if(!record||!['facebook','instagram'].includes(record.platform)||record.mode!=='OFFICIAL')
+    throw new NotFoundException('Meta account unavailable');
+  if(!record.encryptedCredentials||!record.externalAccountId||record.state==='DISCONNECTED')
+    throw new ConflictException('Connect the Meta account again');
+  return record;
+ }
+ /** Operator-authorized, per-account read-only check; never publishes or returns tokens. */
+ async checkAccount(userId:string,tenantId:string,workspaceId:string,brandId:string,id:string){
+  const row=await this.metaRecord(userId,tenantId,workspaceId,brandId,id);
+  if(process.env.META_CONNECT_ENABLED!=='true')throw new ServiceUnavailableException('Meta connector disabled');
+  let health;
+  try{
+   const credentials=unseal<MetaAccount['credentials']>(row.encryptedCredentials!);
+   health=await inspectMetaAccount({platform:row.platform as 'facebook'|'instagram',
+    externalAccountId:row.externalAccountId!,credentials,expiresAt:row.tokenExpiresAt});
+  }catch(err){
+   if(!(err instanceof MetaAccessError))throw err;
+   if(err.kind!=='restricted')throw new ServiceUnavailableException('Meta health check temporarily unavailable');
+   health=metaScopeHealth(row.platform as 'facebook'|'instagram',[],false);
+  }
+  const updated=await this.db.socialConnection.updateMany({where:{id,brandId,state:{not:'DISCONNECTED'},
+   encryptedCredentials:{not:null}},data:{state:health.state,tokenScopes:health.grantedScopes,
+    lastHealthCheckedAt:new Date(),lastHealthReason:health.reason,
+    pausedAt:health.state==='CONNECTED'?null:new Date()}});
+  if(!updated.count)throw new ConflictException('Account changed during health check');
+  return {state:health.state,reason:health.reason,missingScopes:health.missingScopes,
+   lastCheckedAt:new Date().toISOString(),canPublish:false};
+ }
+ /** User-initiated refresh; locks identity to the exact previously-authorized Page/IG account. */
+ async refreshAccount(userId:string,tenantId:string,workspaceId:string,brandId:string,id:string){
+  const row=await this.metaRecord(userId,tenantId,workspaceId,brandId,id);
+  if(process.env.META_CONNECT_ENABLED!=='true')throw new ServiceUnavailableException('Meta connector disabled');
+  await this.activePolicy('meta');
+  let refreshed;
+  try{
+   refreshed=await refreshMetaAccount({platform:row.platform as 'facebook'|'instagram',
+    externalAccountId:row.externalAccountId!,
+    credentials:unseal<MetaAccount['credentials']>(row.encryptedCredentials!),
+    expiresAt:row.tokenExpiresAt});
+  }catch(err){
+   if(err instanceof MetaAccessError)throw new ConflictException('Meta authorization must be renewed or provider unavailable');
+   throw err;
+  }
+  const changed=await this.db.socialConnection.updateMany({where:{id,brandId,
+   encryptedCredentials:row.encryptedCredentials,state:{not:'DISCONNECTED'}},data:{
+   encryptedCredentials:seal(refreshed.credentials),tokenExpiresAt:refreshed.expiresAt,
+   tokenScopes:refreshed.health.grantedScopes,state:refreshed.health.state,
+   lastHealthCheckedAt:new Date(),lastHealthReason:refreshed.health.reason,
+   pausedAt:refreshed.health.state==='CONNECTED'?null:new Date(),
+  }});
+  if(!changed.count)throw new ConflictException('Account changed during refresh, retry');
+  await this.db.platformAuditEvent.create({data:{actorId:userId,action:'social.meta.refresh',
+   resourceType:'social_connection',resourceId:id,details:{brandId,state:refreshed.health.state}}});
+  return {refreshed:true,state:refreshed.health.state,missingScopes:refreshed.health.missingScopes,canPublish:false};
  }
  async disconnect(userId:string,tenantId:string,workspaceId:string,brandId:string,connectionId:string){
   const {brand,tenantId:owned}=await this.manager(userId,brandId);
@@ -167,6 +230,7 @@ export class OAuthService{
    if(!connection)throw new NotFoundException('Account not found');
    await tx.socialConnection.update({where:{id:connectionId},data:{
      state:'DISCONNECTED',encryptedCredentials:null,tokenExpiresAt:null,tokenScopes:[],
+    lastHealthReason:null,lastHealthCheckedAt:null,
    }});
    await tx.platformAuditEvent.create({data:{actorId:userId,action:'social.disconnect',
     resourceType:'social_connection',resourceId:connectionId,

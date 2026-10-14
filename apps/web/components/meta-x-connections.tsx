@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useState} from "react";
 const API=process.env.NEXT_PUBLIC_API_BASE_URL||"http://localhost:4000/api/v1";
 type Readiness={providers:{network:"meta"|"x";configured:boolean;testingEnabled:boolean;paidApiConsent:boolean|null;canPublish:boolean}[];
- accounts:{id:string;platform:string;externalAccountId:string|null;externalAccountName:string|null;state:string;tokenExpiresAt:string|null}[]};
+ accounts:{id:string;platform:string;externalAccountId:string|null;externalAccountName:string|null;state:string;tokenExpiresAt:string|null;lastHealthCheckedAt?:string|null;lastHealthReason?:string|null}[]};
 type Choice={id:string;name:string;platform:"facebook"|"instagram"|"x"};
 async function apiCall<T>(path:string,method="GET",body?:unknown):Promise<T>{
  const r=await fetch(API+path,{method,credentials:"include",cache:"no-store",
@@ -51,6 +51,15 @@ export function MetaXConnections({tenantId,workspaceId,brandId}:{tenantId:string
    window.history.replaceState(null,"",window.location.pathname);
   }catch(e){setError(e instanceof Error?e.message:"Could not link account");}finally{setBusy(false);}
  }
+ async function maintain(connectionId:string,operation:'health-check'|'refresh'){
+  setBusy(true);setError("");setNote("");
+  try{
+   const result=await apiCall<{state:string;reason?:string;missingScopes?:string[]}>(root+"/accounts/"+connectionId+"/"+operation,"POST",{});
+   setNote("Meta account: "+result.state.toLowerCase()+(result.missingScopes?.length?" — missing "+result.missingScopes.join(", "):""));
+   await refresh();
+  }catch(e){setError(e instanceof Error?e.message:"Account maintenance failed");}
+  finally{setBusy(false);}
+ }
  async function disconnect(connectionId:string){
   if(!window.confirm("Disconnect this account and erase locally stored credentials?"))return;
   setBusy(true);setError("");
@@ -87,8 +96,10 @@ export function MetaXConnections({tenantId,workspaceId,brandId}:{tenantId:string
    <h4 className="font-semibold">Linked testing accounts</h4>
    <div className="mt-3 space-y-2">{status.accounts.map(a=><div key={a.id} className="flex flex-wrap justify-between gap-4 rounded-xl border border-white/10 p-3">
     <div><p className="text-sm font-semibold">{a.externalAccountName||a.platform}</p>
-     <p className="mt-1 text-xs text-slate-400">{a.platform} · {a.state}{a.tokenExpiresAt?" · Expires "+new Date(a.tokenExpiresAt).toLocaleDateString():""}</p></div>
-    {a.state!=="DISCONNECTED"&&<button type="button" disabled={busy} onClick={()=>void disconnect(a.id)} className="text-sm text-rose-200">Disconnect</button>}
+     <p className="mt-1 text-xs text-slate-400">{a.platform} · {a.state}{a.tokenExpiresAt?" · Expires "+new Date(a.tokenExpiresAt).toLocaleDateString():""}{a.lastHealthReason?" · Check: "+a.lastHealthReason.replaceAll("_"," "):""}</p></div>
+    {a.state!=="DISCONNECTED"&&<div className="flex flex-wrap items-center gap-3">
+      {(["facebook","instagram"].includes(a.platform))&&<><button type="button" disabled={busy} onClick={()=>void maintain(a.id,"health-check")} className="text-sm text-emerald-200">Check status</button><button type="button" disabled={busy} onClick={()=>void maintain(a.id,"refresh")} className="text-sm text-slate-200">Refresh token</button></>}
+      <button type="button" disabled={busy} onClick={()=>void disconnect(a.id)} className="text-sm text-rose-200">Disconnect</button></div>}
    </div>)}</div>
   </div>:null}
  </section>;

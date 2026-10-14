@@ -4,7 +4,7 @@ import { challenge } from './oauth-crypto';
 export type OAuthNetwork='meta'|'x';
 export type PendingAccount={
  platform:'facebook'|'instagram'|'x';id:string;name:string;
- accessToken:string;refreshToken?:string;expiresAt?:string;scopes:string[];
+ accessToken:string;refreshToken?:string;userAccessToken?:string;expiresAt?:string;scopes:string[];
 };
 export type AccountResponse={accounts:PendingAccount[]};
 
@@ -73,16 +73,20 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
    fields:'id,name,access_token,instagram_business_account{id,username}',limit:'100',
   }),{method:'GET',headers:{Authorization:'Bearer '+long.access_token}});
   const expiresAt=long.expires_in?new Date(Date.now()+long.expires_in*1000).toISOString():undefined;
+  // Requested OAuth permissions are not proof of grants; inspect Meta's actual grant result.
+  const permissions=await json<{data?:Array<{permission:string;status:string}>}>(
+    'https://graph.facebook.com/'+GRAPH_VERSION+'/me/permissions?limit=100',
+    {method:'GET',headers:{Authorization:'Bearer '+long.access_token}});
+  const granted=(permissions.data||[]).filter(x=>x.status==='granted').map(x=>x.permission);
   const accounts:PendingAccount[]=[];
   for(const page of pages.data||[]){
    if(typeof page.id!=='string'||typeof page.access_token!=='string'||!page.access_token)continue;
    // The requested OAuth scopes are not proof of granted permissions; verify them before publishing.
-   const scopes:string[]=[];
-   accounts.push({platform:'facebook',id:page.id,name:page.name||'Facebook Page',accessToken:page.access_token,scopes,expiresAt});
+   accounts.push({platform:'facebook',id:page.id,name:page.name||'Facebook Page',accessToken:page.access_token,userAccessToken:long.access_token,scopes:granted,expiresAt});
    if(page.instagram_business_account?.id){
     accounts.push({platform:'instagram',id:page.instagram_business_account.id,
      name:page.instagram_business_account.username||'Instagram professional account',
-     accessToken:page.access_token,scopes:[],expiresAt});
+     accessToken:page.access_token,userAccessToken:long.access_token,scopes:granted,expiresAt});
    }
   }
   if(!accounts.length)throw new BadGatewayException('No eligible Facebook Pages found');

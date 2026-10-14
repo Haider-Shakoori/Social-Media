@@ -69,6 +69,8 @@ services:
       REGISTRATION_ENABLED: "true"
       EMAIL_VERIFICATION_REQUIRED: "false"
       META_CONNECT_ENABLED: "false"
+      META_HEALTH_MONITOR_ENABLED: "false"
+      META_PUBLISHING_ENABLED: "false"
       X_CONNECT_ENABLED: "false"
       X_API_BUDGET_APPROVED: "false"
       AI_GENERATION_ENABLED: "false"
@@ -110,6 +112,22 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  # Future operator-controlled publisher. Profile not enabled in ordinary staging.
+  # Even when explicitly started, hard-disabled until separate credential, review and release gates.
+  publisher:
+    <<: *app
+    profiles: ["publishing"]
+    command: ["node", "apps/api/dist/publishing/worker.js"]
+    env_file: .env.staging
+    environment:
+      NODE_ENV: production
+      META_CONNECT_ENABLED: "false"
+      META_PUBLISHING_ENABLED: "false"
+    depends_on:
+      postgres: {condition: service_healthy}
+    mem_limit: 256m
+    pids_limit: 96
 
   worker:
     <<: *app

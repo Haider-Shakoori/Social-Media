@@ -167,6 +167,8 @@ model SocialConnection {
   externalAccountName  String?         @map("external_account_name") @db.VarChar(255)
   tokenExpiresAt DateTime? @map("token_expires_at")
   tokenScopes String[] @default([]) @map("token_scopes")
+  lastHealthCheckedAt DateTime? @map("last_health_checked_at")
+  lastHealthReason String? @map("last_health_reason") @db.VarChar(64)
   pausedAt DateTime? @map("paused_at")
   connectedAt DateTime? @map("connected_at")
   createdAt            DateTime        @default(now()) @map("created_at")
@@ -174,6 +176,7 @@ model SocialConnection {
   targets              PostTarget[]
 
   @@index([brandId, platform])
+  @@index([state, tokenExpiresAt])
   @@unique([brandId,platform,externalAccountId])
   @@map("social_connections")
 }
@@ -205,6 +208,7 @@ model PostVersion {
   createdAt DateTime          @default(now()) @map("created_at")
   post      ContentPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
   approvals ApprovalRequest[]
+  publishTargets PostTarget[]
 
   @@unique([postId, number])
   @@map("post_versions")
@@ -217,12 +221,19 @@ model PostTarget {
   state              PostState        @default(DRAFT)
   scheduledAt        DateTime?        @map("scheduled_at")
   remoteId           String?          @map("remote_id") @db.VarChar(255)
+  approvedVersionId  String?          @map("approved_version_id") @db.Uuid
+  attemptedAt        DateTime?        @map("attempted_at")
+  lastFailureCode    String?          @map("last_failure_code") @db.VarChar(60)
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at")
+  approvedVersion    PostVersion?     @relation(fields:[approvedVersionId], references:[id], onDelete:SetNull)
   createdAt          DateTime         @default(now()) @map("created_at")
   post               ContentPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
   socialConnection   SocialConnection @relation(fields: [socialConnectionId], references: [id], onDelete: Restrict)
 
   @@unique([postId, socialConnectionId])
   @@index([state, scheduledAt])
+  @@index([state, attemptedAt])
+  @@index([approvedVersionId])
   @@map("post_targets")
 }
 
