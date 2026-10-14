@@ -113,9 +113,12 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
    client_secret:process.env.INSTAGRAM_APP_SECRET!,grant_type:'authorization_code',
    redirect_uri:requestUrl('instagram'),code});
   // Unlike Facebook Login, Instagram Business Login exchanges its code on api.instagram.com.
-  const short=await json<{access_token?:string;user_id?:string|number;permissions?:string[]}>(
+  type IgShort={access_token?:string;user_id?:string|number;permissions?:string[]};
+  const response=await json<IgShort|{data?:IgShort[]}>(
    'https://api.instagram.com/oauth/access_token',{
     method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
+  const short='data' in response?
+   (Array.isArray(response.data)&&response.data.length===1?response.data[0]:{} as IgShort):response;
   if(typeof short.access_token!=='string'||short.access_token.length<10)
    throw new BadGatewayException('Instagram authorization response invalid');
   const exchange=new URLSearchParams({grant_type:'ig_exchange_token',
