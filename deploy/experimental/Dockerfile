@@ -2,7 +2,8 @@
 FROM node:22-bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    NODE_ENV=production
+    NODE_ENV=production \
+    HOME=/tmp
 RUN apt-get update && apt-get install -y --no-install-recommends \
       chromium xvfb fonts-liberation ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
