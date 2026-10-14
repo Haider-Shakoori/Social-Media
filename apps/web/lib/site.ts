@@ -36,7 +36,7 @@ export const footerGroups = [
 
 // Pilot-only website catalog. The broader network roadmap remains in internal docs and code.
 export const platformPlans = [
-  { name: "Facebook Pages", scope: "Managed Pages", status: "Pilot · disabled", detail: "Meta OAuth is implemented for approved test apps, but account linking stays off until dedicated credentials and authorization are supplied. No automatic publishing." },
+  { name: "Facebook Pages", scope: "Managed Pages", status: "Pilot · disabled", detail: "Meta OAuth is implemented for approved test apps, but account linking stays off until dedicated credentials and authorization are supplied. Automatic publishing is disabled." },
   { name: "Instagram", scope: "Eligible professional accounts", status: "Pilot · disabled", detail: "Eligible Instagram professional accounts are part of the Meta testing pilot. Connection requires approved developer permissions; posting stays manual." },
   { name: "X (Twitter)", scope: "Official developer API accounts", status: "Manual fallback", detail: "Manual export is available. Live X OAuth/API access and paid calls remain disabled until explicit spending approval and hard budget controls." },
 ] as const;
