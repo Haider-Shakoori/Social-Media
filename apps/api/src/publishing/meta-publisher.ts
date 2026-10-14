@@ -31,6 +31,9 @@ export async function sendMetaPost(input:{
  if(input.platform!=='facebook'&&input.platform!=='instagram')throw new PublishOutcomeUnknown('unsupported_network');
  const secrets=unseal<MetaCredentials>(input.encryptedCredentials);
  if(!secrets.accessToken)throw new PublishOutcomeUnknown('credentials_missing');
+ // This publisher targets graph.facebook.com. Instagram Login credentials must never
+ // be sent to that host; a separate reviewed graph.instagram.com publisher is required.
+ if(secrets.loginType==='instagram')throw new PublishOutcomeUnknown('instagram_login_publishing_not_enabled');
  if(input.platform==='facebook'){
   if(input.mediaUrls.length)throw new PublishOutcomeUnknown('unsupported_media');
   return post(input.accountId+'/feed',secrets.accessToken,
