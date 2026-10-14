@@ -5,6 +5,7 @@ import {AccessService} from '../tenants/access.service';
 import {EntitlementsService,monthStartUTC} from '../billing/entitlements.service';
 import {metaPublishingBlockers,supportedMetaFormat,type PublishGate} from './guard';
 import {verifyFacebookRemote} from './reconcile';
+import {verifyInstagramMedia} from './instagram-image-publisher';
 import {unseal} from '../social-oauth/oauth-crypto';
 import type {MetaCredentials} from '../social-oauth/meta-account';
 
@@ -92,15 +93,20 @@ export class PublishingService {
    include:{socialConnection:true}});
   if(!target)throw new NotFoundException('Publishing target unavailable');
   if(target.state!=='UNCERTAIN')return {state:target.state,verified:false,automaticRetry:false};
-  if(!target.remoteId||!target.socialConnection.encryptedCredentials||
-     target.socialConnection.platform!=='facebook'||!target.socialConnection.externalAccountId)
+  if(!target.remoteId||!target.socialConnection.encryptedCredentials)
     return {state:'UNCERTAIN',verified:false,automaticRetry:false,
      nextStep:'Check the actual provider account manually; do not retry this target without resolving duplication risk'};
-  if(!await verifyFacebookRemote({remoteId:target.remoteId,
-    pageId:target.socialConnection.externalAccountId,
-    encryptedCredentials:target.socialConnection.encryptedCredentials}))
+  const verified=target.socialConnection.platform==='instagram'
+   ? await verifyInstagramMedia({remoteId:target.remoteId,
+      encryptedCredentials:target.socialConnection.encryptedCredentials})
+   : target.socialConnection.platform==='facebook'&&Boolean(target.socialConnection.externalAccountId)
+   ? await verifyFacebookRemote({remoteId:target.remoteId,
+      pageId:target.socialConnection.externalAccountId!,
+      encryptedCredentials:target.socialConnection.encryptedCredentials})
+   : false;
+  if(!verified)
     return {state:'UNCERTAIN',verified:false,automaticRetry:false,
-     nextStep:'Provider could not confirm this exact Page post'};
+     nextStep:'Provider could not confirm the exact published media; do not retry'};
   const updated=await this.db.postTarget.updateMany({where:{id:targetId,state:'UNCERTAIN'},
    data:{state:'PUBLISHED',lastFailureCode:null}});
   if(updated.count)await this.db.platformAuditEvent.create({data:{actorId:user,
