@@ -67,7 +67,9 @@ export function MetaXConnections({tenantId,workspaceId,brandId}:{tenantId:string
   setBusy(true);setError("");setNote("");
   try{
    const result=await apiCall<{state:string;reason?:string;missingScopes?:string[]}>(root+"/accounts/"+connectionId+"/"+operation,"POST",{});
-   setNote("Meta account: "+result.state.toLowerCase()+(result.missingScopes?.length?" — missing "+result.missingScopes.join(", "):""));
+   setNote(result.reason==="permissions_unverified"
+    ?"Instagram account linked and identity verified. Specific permissions are unverified; publishing is still disabled."
+    :"Meta account: "+result.state.toLowerCase()+(result.missingScopes?.length?" — missing "+result.missingScopes.join(", "):""));
    await refresh();
   }catch(e){setError(e instanceof Error?e.message:"Account maintenance failed");}
   finally{setBusy(false);}

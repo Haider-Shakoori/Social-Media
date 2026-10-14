@@ -113,6 +113,8 @@ test('Instagram health uses graph.instagram.com, never Facebook Page APIs',async
  const health=await inspectMetaAccount(account,fake);
  assert.equal(health.state,'LIMITED');
  assert.equal(health.reason,'permissions_unverified');
+ assert.deepEqual(health.missingScopes,[], 'unverified scopes must not be reported as missing');
+ assert.deepEqual(health.grantedScopes,[], 'grants not proven by successful identity lookup');
  const refreshed=await refreshMetaAccount(account,fake);
  assert.equal(refreshed.credentials.loginType,'instagram');
  assert.equal(refreshed.credentials.accessToken,'refreshed-long-lived-ig-token');
