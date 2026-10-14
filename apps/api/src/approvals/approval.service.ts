@@ -1,8 +1,19 @@
 import {ConflictException,ForbiddenException,Injectable,NotFoundException} from '@nestjs/common';
-import {PrismaService} from '../prisma/prisma.service';import {AccessService} from '../tenants/access.service';
+import {PrismaService} from '../prisma/prisma.service';
+import {MailService} from '../security/mail.service';import {AccessService} from '../tenants/access.service';
 @Injectable()
 export class ApprovalService{
- constructor(private readonly db:PrismaService,private readonly access:AccessService){}
+ constructor(private readonly db:PrismaService,private readonly access:AccessService,
+  private readonly mail:MailService){}
+ private approvalLink(t:string,w:string,b:string,id:string,decision:'APPROVED'|'REJECTED'){
+  const base=process.env.WEB_BASE_URL||'http://localhost:3000';
+  const url=new URL('/review',base);
+  if(url.protocol!=='https:' && !(url.protocol==='http:'&&url.hostname==='localhost'))
+   throw new Error('Approval callback website must be HTTPS');
+  for(const [key,value] of Object.entries({tenant:t,workspace:w,brand:b,request:id,decision}))
+   url.searchParams.set(key,value);
+  return url.toString();
+ }
  async list(t:string,w:string,b:string,u:string){
   await this.access.brand(t,w,b,u);
   const approvals=await this.db.approvalRequest.findMany({where:{postVersion:{post:{brandId:b}}},
@@ -12,7 +23,7 @@ export class ApprovalService{
  }
  async request(t:string,w:string,b:string,u:string,input:{postId:string;expiresHours:number}){
   await this.access.brand(t,w,b,u,['OWNER','ADMIN','EDITOR']);
-  return this.db.$transaction(async tx=>{
+  const outcome=await this.db.$transaction(async tx=>{
    const post=await tx.contentPost.findFirst({where:{id:input.postId,brandId:b}});
    if(!post)throw new NotFoundException('Post missing');
    if(post.state!=='DRAFT')throw new ConflictException('Only draft posts can request approval');
@@ -33,8 +44,23 @@ export class ApprovalService{
    })),skipDuplicates:true});
    await tx.platformAuditEvent.create({data:{actorId:u,action:'content.approval.request',
     resourceType:'content_post',resourceId:post.id,details:{brandId:b,version:version.number}}});
-   return {request};
+   return {request,recipients};
   });
+  // The DB transaction must commit before attempting SMTP. Email delivery is
+  // optional and cannot undo a valid approval request or leak post content.
+  if(process.env.APPROVAL_EMAIL_NOTIFICATIONS_ENABLED==='true'&&outcome.recipients.length){
+   const reviewers=await this.db.user.findMany({where:{
+    id:{in:outcome.recipients},emailVerifiedAt:{not:null},notificationEmailOptIn:true,
+   },select:{email:true}});
+   const approveUrl=this.approvalLink(t,w,b,outcome.request.id,'APPROVED');
+   const rejectUrl=this.approvalLink(t,w,b,outcome.request.id,'REJECTED');
+   // No authorization tokens are present in email links; the app enforces
+   // session login, tenant membership, four-eyes review and request expiry.
+   await Promise.allSettled(reviewers.slice(0,50).map(user=>
+    this.mail.sendContentApproval(user.email,approveUrl,rejectUrl)));
+  }
+  return {request:outcome.request,
+   reviewerEmailMode:process.env.APPROVAL_EMAIL_NOTIFICATIONS_ENABLED==='true'?'enabled':'disabled'};
  }
  async review(t:string,w:string,b:string,u:string,id:string,input:{decision:'APPROVED'|'REJECTED';note:string}){
   await this.access.brand(t,w,b,u,['OWNER','ADMIN','APPROVER']);
