@@ -28,7 +28,13 @@ export function AuthForm({mode,token}:{mode:AuthMode;token?:string}) {
       const result=await response.json().catch(()=>({message:"Request failed"}));
       if(!response.ok)throw new Error(typeof result.message==="string"?result.message:"Request failed");
       setSuccess(true);
-      if(mode==="login"){window.location.assign("/dashboard");return;}
+      if(mode==="login"){
+        const next=new URLSearchParams(window.location.search).get("next")||"";
+        // Only a same-origin relative review link is allowed; do not create
+        // an open redirect from the query string.
+        window.location.assign(next.startsWith("/review?")&&!next.startsWith("//")?next:"/dashboard");
+        return;
+      }
       if(mode==="register"){
         if(result.user?.id){window.location.assign("/dashboard");return;}
         setMessage(typeof result.message==="string"?result.message:"Follow the account setup instructions.");
