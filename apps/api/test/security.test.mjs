@@ -30,7 +30,8 @@ test('only exact signed Meta callback routes bypass Origin/form checks',()=>{
  const middleware=new RequestSecurityMiddleware();
  const simulate=(path,type='application/x-www-form-urlencoded')=>{
   let nextCalled=false;
-  const req={method:'POST',path,header:(name)=>{
+  // Express/Nest mounts middleware: req.path may lose /api/v1, but originalUrl does not.
+  const req={method:'POST',path:path.replace(/^\\/api\\/v1/,'') ,originalUrl:path,header:(name)=>{
    const headers={'content-type':type,'content-length':'25'};
    return headers[name.toLowerCase()];
   }};
@@ -43,4 +44,6 @@ test('only exact signed Meta callback routes bypass Origin/form checks',()=>{
  assert.throws(()=>simulate('/api/v1/social/meta/other'));
  assert.throws(()=>simulate('/api/v1/social/oauth/instagram/callback'));
  assert.throws(()=>simulate('/api/v1/social/meta/data-deletion/status'));
+ assert.throws(()=>simulate('/api/v1/social/meta/deauthorize/extra'));
+
 });
