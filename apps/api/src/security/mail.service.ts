@@ -29,7 +29,7 @@ export class MailService {
       'Approve: '+approveUrl,
       'Reject: '+rejectUrl,
       'If you do not recognize this request, ignore this email.',
-    ].join('\\n\\n');
+    ].join('\n\n');
     try{await transporter.sendMail({from,to:address,subject,text});}
     catch{throw new ServiceUnavailableException('Approval email delivery temporarily unavailable');}
     finally{transporter.close();}
