@@ -8,7 +8,7 @@ import {randomUrlToken,tokenHash,seal,unseal} from './oauth-crypto';
 import {authorizeUrl,exchangeCode,hasOAuthConfig,type OAuthNetwork,type PendingAccount} from './provider-transport';
 import type {Prisma} from '@prisma/client';
 import {inspectMetaAccount,refreshMetaAccount,MetaAccessError,metaScopeHealth,type MetaAccount} from './meta-account';
-type ConnectNetwork='meta'|'x';
+type ConnectNetwork='meta'|'instagram'|'x';
 type Vault={accounts:PendingAccount[]};
 @Injectable()
 export class OAuthService{
@@ -24,7 +24,7 @@ export class OAuthService{
   return {brand,tenantId:brand.workspace.tenantId};
  }
  private async activePolicy(network:ConnectNetwork){
-  const ids=network==='meta'?['facebook','instagram']:['x'];
+  const ids=network==='meta'?['facebook','instagram']:network==='instagram'?['instagram']:['x'];
   const policies=await this.db.socialProviderPolicy.findMany({where:{network:{in:ids}}});
   const enabled=policies.some(p=>p.rolloutState==='TESTING'&&p.operatorEnabled);
   if(!enabled)throw new ServiceUnavailableException('Provider not enabled for controlled OAuth testing');
@@ -32,7 +32,7 @@ export class OAuthService{
     process.env.X_API_BUDGET_APPROVED!=='true'||Number(process.env.X_API_MAX_MONTHLY_USD_MINOR||0)<=0)){
    throw new ServiceUnavailableException('X paid API budget has not been explicitly authorized');
   }
-  if(process.env[(network==='meta'?'META':'X')+'_CONNECT_ENABLED']!=='true'||!hasOAuthConfig(network)){
+  if(process.env[(network==='meta'?'META':network==='instagram'?'INSTAGRAM':'X')+'_CONNECT_ENABLED']!=='true'||!hasOAuthConfig(network)){
     throw new ServiceUnavailableException('Provider OAuth credentials and operator flag not configured');
   }
   if(!process.env.SOCIAL_TOKEN_ENCRYPTION_KEY)throw new ServiceUnavailableException('Social token encryption not configured');
@@ -49,11 +49,11 @@ export class OAuthService{
     connectedAt:true,tokenScopes:true,lastHealthCheckedAt:true,lastHealthReason:true,
    },orderBy:{createdAt:'desc'}}),
   ]);
-  return {providers:['meta','x'].map(network=>({
+  return {providers:['meta','instagram','x'].map(network=>({
     network,
     configured:hasOAuthConfig(network as ConnectNetwork)&&Boolean(process.env.SOCIAL_TOKEN_ENCRYPTION_KEY)&&
-      process.env[(network==='meta'?'META':'X')+'_CONNECT_ENABLED']==='true',
-    testingEnabled:policies.some(p=>(network==='meta'?['facebook','instagram']:['x']).includes(p.network)&&p.operatorEnabled&&p.rolloutState==='TESTING'),
+      process.env[(network==='meta'?'META':network==='instagram'?'INSTAGRAM':'X')+'_CONNECT_ENABLED']==='true',
+    testingEnabled:policies.some(p=>(network==='meta'?['facebook','instagram']:network==='instagram'?['instagram']:['x']).includes(p.network)&&p.operatorEnabled&&p.rolloutState==='TESTING'),
     paidApiConsent:network==='x'?process.env.X_API_BUDGET_APPROVED==='true'&&policies.some(p=>p.network==='x'&&p.costApproved):null,
     canPublish:false,
    })),accounts,notice:'Account linking for approved tests only. No publish calls are available.'};
@@ -85,7 +85,7 @@ export class OAuthService{
   return attempt;
  }
  async callback(userId:string,sessionId:string,network:string,code:string,state:string){
-  if(network!=='meta'&&network!=='x')throw new NotFoundException('Unknown OAuth provider');
+  if(network!=='meta'&&network!=='instagram'&&network!=='x')throw new NotFoundException('Unknown OAuth provider');
   if(!/^[A-Za-z0-9_-]{30,150}$/.test(state)||code.length<5||code.length>4096){
     throw new BadRequestException('Invalid OAuth response');
   }
@@ -125,7 +125,7 @@ export class OAuthService{
   if(!attempt.stateUsedAt||!attempt.pendingCipher)throw new ConflictException('Authorization incomplete');
   const vault=unseal<Vault>(attempt.pendingCipher);
   const account=vault.accounts.find(a=>a.id===accountId&&a.platform===platform);
-  if(!account||((attempt.network==='meta')!==(platform!=='x'))){
+  if(!account|| (attempt.network==='x'?platform!=='x':attempt.network==='instagram'?platform!=='instagram':platform==='x')){
    throw new BadRequestException('Account not present in authorized response');
   }
   const selectedPolicy=await this.db.socialProviderPolicy.findUnique({where:{network:platform}});
@@ -144,10 +144,12 @@ export class OAuthService{
     const sub=await tx.subscription.findUniqueOrThrow({where:{tenantId}});
     await this.entitlement.assertCount(tx,sub,'CONNECTIONS',1);
    }
-   const initialHealth=platform==='x'?null:metaScopeHealth(platform,account.scopes,Boolean(account.userAccessToken));
+   const initialHealth=platform==='x'?null:metaScopeHealth(platform,account.scopes,
+  Boolean(account.accessToken&&(account.loginType==='instagram'||account.userAccessToken)),account.loginType);
    const data={
     mode:'OFFICIAL' as const,state:initialHealth?.state??'CONNECTED' as const,externalAccountName:account.name,
-    encryptedCredentials:seal({accessToken:account.accessToken,refreshToken:account.refreshToken,userAccessToken:account.userAccessToken}),
+    encryptedCredentials:seal({accessToken:account.accessToken,refreshToken:account.refreshToken,
+     userAccessToken:account.userAccessToken,loginType:account.loginType}),
     tokenExpiresAt:account.expiresAt?new Date(account.expiresAt):null,
     tokenScopes:account.scopes,connectedAt:new Date(),
     lastHealthCheckedAt:initialHealth?new Date():null,
@@ -177,10 +179,11 @@ export class OAuthService{
  /** Operator-authorized, per-account read-only check; never publishes or returns tokens. */
  async checkAccount(userId:string,tenantId:string,workspaceId:string,brandId:string,id:string){
   const row=await this.metaRecord(userId,tenantId,workspaceId,brandId,id);
-  if(process.env.META_CONNECT_ENABLED!=='true')throw new ServiceUnavailableException('Meta connector disabled');
+  const credentials=unseal<MetaAccount['credentials']>(row.encryptedCredentials!);
+  if(process.env[credentials.loginType==='instagram'?'INSTAGRAM_CONNECT_ENABLED':'META_CONNECT_ENABLED']!=='true')
+   throw new ServiceUnavailableException('Meta connector disabled');
   let health;
   try{
-   const credentials=unseal<MetaAccount['credentials']>(row.encryptedCredentials!);
    health=await inspectMetaAccount({platform:row.platform as 'facebook'|'instagram',
     externalAccountId:row.externalAccountId!,credentials,expiresAt:row.tokenExpiresAt});
   }catch(err){
@@ -199,13 +202,16 @@ export class OAuthService{
  /** User-initiated refresh; locks identity to the exact previously-authorized Page/IG account. */
  async refreshAccount(userId:string,tenantId:string,workspaceId:string,brandId:string,id:string){
   const row=await this.metaRecord(userId,tenantId,workspaceId,brandId,id);
-  if(process.env.META_CONNECT_ENABLED!=='true')throw new ServiceUnavailableException('Meta connector disabled');
-  await this.activePolicy('meta');
+  const credentials=unseal<MetaAccount['credentials']>(row.encryptedCredentials!);
+  const network=credentials.loginType==='instagram'?'instagram':'meta';
+  if(process.env[network==='instagram'?'INSTAGRAM_CONNECT_ENABLED':'META_CONNECT_ENABLED']!=='true')
+   throw new ServiceUnavailableException('Meta connector disabled');
+  await this.activePolicy(network);
   let refreshed;
   try{
    refreshed=await refreshMetaAccount({platform:row.platform as 'facebook'|'instagram',
     externalAccountId:row.externalAccountId!,
-    credentials:unseal<MetaAccount['credentials']>(row.encryptedCredentials!),
+    credentials,
     expiresAt:row.tokenExpiresAt});
   }catch(err){
    if(err instanceof MetaAccessError)throw new ConflictException('Meta authorization must be renewed or provider unavailable');

@@ -1,10 +1,10 @@
 import { BadGatewayException } from '@nestjs/common';
 import { challenge } from './oauth-crypto';
 
-export type OAuthNetwork='meta'|'x';
+export type OAuthNetwork='meta'|'instagram'|'x';
 export type PendingAccount={
  platform:'facebook'|'instagram'|'x';id:string;name:string;
- accessToken:string;refreshToken?:string;userAccessToken?:string;expiresAt?:string;scopes:string[];
+ accessToken:string;refreshToken?:string;userAccessToken?:string;expiresAt?:string;scopes:string[];loginType?:'instagram'|'facebook';
 };
 export type AccountResponse={accounts:PendingAccount[]};
 
@@ -21,10 +21,12 @@ function callbackUri(value:string){
  return url.toString();
 }
 function requestUrl(network:OAuthNetwork){
- return network==='meta'?callbackUri(process.env.META_REDIRECT_URI||''):callbackUri(process.env.X_REDIRECT_URI||'');
+ return network==='meta'?callbackUri(process.env.META_REDIRECT_URI||''):
+  network==='instagram'?callbackUri(process.env.INSTAGRAM_REDIRECT_URI||''):callbackUri(process.env.X_REDIRECT_URI||'');
 }
 export function hasOAuthConfig(network:OAuthNetwork){
  if(network==='meta')return Boolean(process.env.META_APP_ID&&process.env.META_APP_SECRET&&process.env.META_REDIRECT_URI);
+ if(network==='instagram')return Boolean(process.env.INSTAGRAM_APP_ID&&process.env.INSTAGRAM_APP_SECRET&&process.env.INSTAGRAM_REDIRECT_URI);
  return Boolean(process.env.X_CLIENT_ID&&process.env.X_CLIENT_SECRET&&process.env.X_REDIRECT_URI);
 }
 export function authorizeUrl(network:OAuthNetwork,state:string,verifier?:string):string{
@@ -35,6 +37,19 @@ export function authorizeUrl(network:OAuthNetwork,state:string,verifier?:string)
    scope:'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish',
   });
   return 'https://www.facebook.com/'+GRAPH_VERSION+'/dialog/oauth?'+params;
+ }
+ if(network==='instagram'){
+  requireConfig('INSTAGRAM_APP_ID','INSTAGRAM_APP_SECRET','INSTAGRAM_REDIRECT_URI');
+  // Request basic access by default. Add scopes only after Meta grants them.
+  const allowed=['instagram_business_basic','instagram_business_content_publish',
+   'instagram_business_manage_comments','instagram_business_manage_messages','instagram_business_manage_insights'];
+  const configured=(process.env.INSTAGRAM_SCOPES||'instagram_business_basic').split(',').map(x=>x.trim());
+  if(configured.some(x=>!allowed.includes(x))||!configured.includes('instagram_business_basic'))
+   throw new Error('Invalid INSTAGRAM_SCOPES');
+  const params=new URLSearchParams({client_id:process.env.INSTAGRAM_APP_ID!,
+   redirect_uri:requestUrl('instagram'),response_type:'code',state,
+   scope:[...new Set(configured)].join(',')});
+  return 'https://www.instagram.com/oauth/authorize?'+params;
  }
  requireConfig('X_CLIENT_ID','X_CLIENT_SECRET','X_REDIRECT_URI');
  if(!verifier)throw new Error('PKCE verifier required');
@@ -91,6 +106,43 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
   }
   if(!accounts.length)throw new BadGatewayException('No eligible Facebook Pages found');
   return {accounts};
+ }
+ if(network==='instagram'){
+  requireConfig('INSTAGRAM_APP_ID','INSTAGRAM_APP_SECRET','INSTAGRAM_REDIRECT_URI');
+  const form=new URLSearchParams({client_id:process.env.INSTAGRAM_APP_ID!,
+   client_secret:process.env.INSTAGRAM_APP_SECRET!,grant_type:'authorization_code',
+   redirect_uri:requestUrl('instagram'),code});
+  // Unlike Facebook Login, Instagram Business Login exchanges its code on api.instagram.com.
+  type IgShort={access_token?:string;user_id?:string|number;permissions?:string[]};
+  const response=await json<IgShort|{data?:IgShort[]}>(
+   'https://api.instagram.com/oauth/access_token',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
+  const short:IgShort='data' in response?
+   (Array.isArray(response.data)&&response.data.length===1?response.data[0]:{} as IgShort):
+   response as IgShort;
+  if(typeof short.access_token!=='string'||short.access_token.length<10)
+   throw new BadGatewayException('Instagram authorization response invalid');
+  const exchange=new URLSearchParams({grant_type:'ig_exchange_token',
+   client_secret:process.env.INSTAGRAM_APP_SECRET!,access_token:short.access_token});
+  const long=await json<{access_token?:string;expires_in?:number}>(
+   'https://graph.instagram.com/access_token?'+exchange,{method:'GET'});
+  if(typeof long.access_token!=='string'||long.access_token.length<10)
+   throw new BadGatewayException('Instagram long-lived token missing');
+  const identity=await json<{id?:string;user_id?:string;username?:string;account_type?:string}>(
+   'https://graph.instagram.com/me?fields=id,username,account_type',{
+    method:'GET',headers:{Authorization:'Bearer '+long.access_token}});
+  if(!identity.id||typeof identity.id!=='string'||
+   !['BUSINESS','MEDIA_CREATOR','CREATOR'].includes(identity.account_type||''))
+   throw new BadGatewayException('Eligible Instagram professional account not returned');
+  if(short.user_id&&String(short.user_id)!==identity.id)
+   throw new BadGatewayException('Instagram identity mismatch');
+  // Requested scopes are not proof of granted scopes. Only record explicit grants when returned.
+  const requested=(process.env.INSTAGRAM_SCOPES||'instagram_business_basic').split(',').map(x=>x.trim());
+  const scopes=Array.isArray(short.permissions)?
+   short.permissions.filter(x=>typeof x==='string'&&requested.includes(x)):[];
+  return {accounts:[{platform:'instagram',id:identity.id,name:identity.username||'Instagram professional account',
+   accessToken:long.access_token,loginType:'instagram',scopes,
+   expiresAt:long.expires_in?new Date(Date.now()+long.expires_in*1000).toISOString():undefined}]};
  }
  requireConfig('X_CLIENT_ID','X_CLIENT_SECRET','X_REDIRECT_URI');
  if(!verifier)throw new Error('Missing X PKCE verifier');
