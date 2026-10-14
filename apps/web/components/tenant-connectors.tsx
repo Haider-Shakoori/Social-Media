@@ -73,8 +73,8 @@ export function TenantConnectors({tenantId,workspaces,role}:{tenantId:string;wor
   </section>
   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
    {providers.map(p=><button type="button" onClick={()=>chooseNetwork(p.id)} key={p.id} className={"rounded-xl border p-4 text-left "+(p.id===network?"border-emerald-300/50 bg-emerald-300/10":"border-white/10")}>
-    <h3 className="text-sm font-bold">{p.name}</h3><p className="mt-2 text-xs capitalize text-slate-400">{p.rollout.replaceAll("_"," ")}</p>
-    <p className="mt-3 text-xs text-amber-200">{p.id==="x"?"Manual only":"Meta account connection"} · No automatic publishing</p>
+    <h3 className="text-sm font-bold">{p.name}</h3><p className="mt-2 text-xs text-slate-400">{p.id==="x"?"Manual export":p.rollout==="testing"?"Meta authorization testing":"Meta authorization setup required"}</p>
+    <p className="mt-3 text-xs text-amber-200">{p.id==="x"?"Manual posting only":"Connect via official Meta login"} · No automatic publishing</p>
    </button>)}
   </div>
  
