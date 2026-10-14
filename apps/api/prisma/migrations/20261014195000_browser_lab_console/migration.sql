@@ -2,7 +2,7 @@
 CREATE TABLE "browser_lab_accounts" (
  "id" UUID NOT NULL, "account_key" VARCHAR(80) NOT NULL,
  "proxy_key" VARCHAR(80), "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
- "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updated_at" TIMESTAMP(3) NOT NULL,
  CONSTRAINT "browser_lab_accounts_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "browser_lab_accounts_account_key_key" ON "browser_lab_accounts"("account_key");
@@ -22,6 +22,6 @@ CREATE TABLE "browser_lab_runtime" (
  "max_sessions" INTEGER NOT NULL DEFAULT 1, "agent_version" VARCHAR(40) NOT NULL DEFAULT 'unknown',
  "proxy_keys" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
  "worker_mode" VARCHAR(24) NOT NULL DEFAULT 'read_only',
- "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updated_at" TIMESTAMP(3) NOT NULL,
  CONSTRAINT "browser_lab_runtime_pkey" PRIMARY KEY ("id")
 );
