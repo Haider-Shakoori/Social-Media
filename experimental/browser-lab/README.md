@@ -41,3 +41,9 @@ Example proxy mapping file (keep actual file outside Git, permission 0600):
 ```
 
 The sample credentials above are **illustrative placeholders**, not functional secrets. Browser navigation blocks unapproved cross-origin requests and redirects. This is a controlled experiment, not a guarantee of account safety or compliance with social platform terms. The first-party Meta OAuth connector remains the supported live connection method.
+
+## VPS one-session deployment
+
+A separate GitHub Actions run builds, smoke-tests and publishes an experimental image on merges to main. For the limited VPS pilot, use that GitHub-built image and `docker compose --profile experimental up -d --no-build` instead of a VPS build. The browser service uses `scale: 1`, `BROWSER_LAB_MAX_SESSIONS=1`, a single Temporal activity executor, 1 vCPU, and a 896 MB memory limit. The Temporal development server is separately limited to 640 MB and has no public ports. Do not scale the worker, run additional browser containers, or enable customer traffic on this VPS.
+
+The operator allowlist defaults to **empty**, and no browser requests execute until explicit configuration. For the smoke pilot use only `https://example.org` and optional test account keys. Never put real social passwords in this lab. Keep the separate development Compose stack distinct from `deploy/staging/compose.yaml`; no production Meta OAuth / publishing feature flags are modified.
