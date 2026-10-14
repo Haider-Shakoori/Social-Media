@@ -1,6 +1,7 @@
 import {NativeConnection,Worker} from '@temporalio/worker';
 import {requireLabEnabled} from './config';
 import {inspectAllowlistedPage} from './browser';
+import {singleSessionWorkerLimits} from './worker-limits';
 
 async function main():Promise<void>{
  requireLabEnabled();
@@ -14,10 +15,9 @@ async function main():Promise<void>{
   connection,namespace:'default',taskQueue:'browser-lab-read-only',
   workflowsPath:require.resolve('./workflows'),
   activities:{inspectAllowlistedPage},
-  maxConcurrentActivityTaskExecutions:1,
-  maxConcurrentWorkflowTaskExecutions:1,
+  ...singleSessionWorkerLimits,
  });
  console.log('Experimental browser worker running: read-only, allowlisted, concurrency=1');
  try{await worker.run();}finally{await connection.close();}
 }
-void main().catch(()=>{console.error('Experimental browser worker unavailable');process.exitCode=1;});
+void main().catch(error=>{console.error('Experimental browser worker unavailable:',error instanceof Error?error.message:'unknown error');process.exitCode=1;});
