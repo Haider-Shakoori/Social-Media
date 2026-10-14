@@ -38,3 +38,16 @@ jobs:
           ! grep -q '/var/run/docker.sock' deploy/experimental/compose.yaml
           ! grep -q 'META_PUBLISHING_ENABLED: "true"' deploy/experimental/compose.yaml
           ! grep -q 'X_CONNECT_ENABLED: "true"' deploy/experimental/compose.yaml
+      - name: Build isolated headful Chromium image
+        run: docker build -f deploy/experimental/Dockerfile -t social-browser-lab:ci .
+      - name: Headful local fixture smoke (no provider traffic)
+        run: |
+          docker run --rm --shm-size=256m --memory=1g --cpus=2 \
+            --security-opt=no-new-privileges --cap-drop=ALL \
+            --entrypoint /bin/sh social-browser-lab:ci -ec '
+            Xvfb :99 -screen 0 1280x800x24 -nolisten tcp &
+            export DISPLAY=:99
+            sleep 1
+            node /app/dist/smoke.js playwright
+            node /app/dist/smoke.js patchright
+          '
