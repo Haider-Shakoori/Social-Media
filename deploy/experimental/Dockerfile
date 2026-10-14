@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     NODE_ENV=production \
     HOME=/tmp
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      chromium xvfb fonts-liberation ca-certificates tini \
+      chromium xvfb x11vnc websockify novnc fonts-liberation ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY experimental/browser-lab/package.json ./package.json
@@ -14,7 +14,8 @@ COPY experimental/browser-lab/tsconfig.json ./tsconfig.json
 COPY experimental/browser-lab/src ./src
 RUN npm run build
 COPY experimental/browser-lab/entrypoint.sh /app/entrypoint.sh
-RUN chmod 755 /app/entrypoint.sh \
+COPY experimental/browser-lab/instagram-pilot-entrypoint.sh /app/instagram-pilot-entrypoint.sh
+RUN chmod 755 /app/entrypoint.sh /app/instagram-pilot-entrypoint.sh \
  && useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin lab \
  && mkdir -p /app/profiles \
  && chown -R lab:lab /app
