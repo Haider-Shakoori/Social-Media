@@ -9,10 +9,16 @@ on:
       - 'packages/**'
       - 'package.json'
       - 'pnpm-workspace.yaml'
+  push:
+    branches: ['main']
+    paths:
+      - 'deploy/staging/**'
+      - '.dockerignore'
+      - '.github/workflows/staging-container.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   staging-container:
@@ -33,4 +39,21 @@ jobs:
           docker build --file deploy/staging/Dockerfile \
             --build-arg NEXT_PUBLIC_API_BASE_URL=https://socials.businessos.af/api/v1 \
             --build-arg NEXT_PUBLIC_SITE_URL=https://socials.businessos.af \
-            --tag social-media-staging-ci:${{ github.sha }} .
+            --tag social-media-staging/app:local .
+      - name: Package GitHub-built image for VPS (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker save social-media-staging/app:local | zstd -T2 -3 -o social-media-staging-image.tar.zst
+          test -s social-media-staging-image.tar.zst
+      - name: Publish prerelease image artifact (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="social-staging-${GITHUB_SHA:0:12}"
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Social-Media staging image ${GITHUB_SHA:0:12}" \
+            --notes "GitHub CI-built staging Docker image, no credentials or production publication. Intended for isolated VPS testing."
+          gh release upload "$tag" social-media-staging-image.tar.zst
+
