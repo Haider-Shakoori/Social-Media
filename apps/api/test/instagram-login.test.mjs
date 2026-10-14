@@ -55,21 +55,24 @@ test('Instagram exchanges code on official hosts and preserves exact professiona
      permissions:['instagram_business_basic']});
    }
    if(u.pathname==='/access_token')return Response.json({access_token:'long-lived-access-token',expires_in:5184000});
-   if(u.pathname==='/me')return Response.json({id:'1784140408606515',username:'pilot_account',account_type:'BUSINESS'});
+   if(u.pathname==='/me'){
+    assert.equal(u.searchParams.get('fields'),'id,user_id,username,account_type');
+    return Response.json({id:'app-scoped-pilot-id',user_id:'1784140408606515',username:'pilot_account',account_type:'BUSINESS'});
+   }
    return Response.json({}, {status:404});
   };
   const result=await exchangeCode('instagram','authorization-code');
   assert.equal(result.accounts.length,1);
   assert.equal(result.accounts[0].platform,'instagram');
   assert.equal(result.accounts[0].loginType,'instagram');
-  assert.equal(result.accounts[0].id,'1784140408606515');
+  assert.equal(result.accounts[0].id,'app-scoped-pilot-id');
   assert.deepEqual(result.accounts[0].scopes,['instagram_business_basic']);
   assert.deepEqual(calls.map(x=>x.url.hostname),['api.instagram.com','graph.instagram.com','graph.instagram.com']);
   globalThis.fetch=async(url,opts)=>{
    const u=new URL(url);
    if(u.hostname==='api.instagram.com')return Response.json({access_token:'short-lived-access-token',user_id:'1784140408606515'});
    if(u.pathname==='/access_token')return Response.json({access_token:'long-lived-access-token',expires_in:5184000});
-   return Response.json({id:'different-identity',username:'attacker',account_type:'BUSINESS'});
+   return Response.json({id:'app-scoped-pilot-id',user_id:'1784140408606516',username:'attacker',account_type:'BUSINESS'});
   };
   await assert.rejects(exchangeCode('instagram','code'),error=>error.stage==='instagram_identity_mismatch');
  }finally{
