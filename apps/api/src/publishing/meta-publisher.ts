@@ -28,6 +28,7 @@ export async function sendMetaPost(input:{
  platform:'facebook'|'instagram';accountId:string;encryptedCredentials:string;
  caption:string;mediaUrls:string[];
 },fetcher:typeof fetch=fetch):Promise<string>{
+ if(input.platform!=='facebook'&&input.platform!=='instagram')throw new PublishOutcomeUnknown('unsupported_network');
  const secrets=unseal<MetaCredentials>(input.encryptedCredentials);
  if(!secrets.accessToken)throw new PublishOutcomeUnknown('credentials_missing');
  if(input.platform==='facebook'){
