@@ -4,6 +4,7 @@ import {inspectAllowlistedPage} from './browser';
 
 async function main():Promise<void>{
  requireLabEnabled();
+ if(process.env.BROWSER_LAB_MAX_SESSIONS!=='1')throw new Error('Single-session worker requires BROWSER_LAB_MAX_SESSIONS=1');
  if(process.env.BROWSER_LAB_ALLOW_SOCIAL_LOGIN==='true'||process.env.BROWSER_LAB_PUBLISHING_ENABLED==='true')
   throw new Error('The experimental read-only lab must not be used for social login or publishing');
  if(!process.env.DISPLAY)throw new Error('Headful Chromium requires Xvfb DISPLAY');
