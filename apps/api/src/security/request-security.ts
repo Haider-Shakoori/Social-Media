@@ -24,9 +24,13 @@ export class RequestSecurityMiddleware implements NestMiddleware {
     // Origin check is a CSRF defense-in-depth measure alongside SameSite cookies.
     // These exact server-to-server callback paths are authenticated via Meta's
     // HMAC signed_request, not browser cookies or Origin.
+    // Nest mounts the middleware under a router, so req.path can be relative
+    // to that mount (e.g. /social/meta/deauthorize). originalUrl is the full
+    // request path seen by Express and prevents route-prefix ambiguity.
+    const originalPath=(req.originalUrl||req.url||req.path).split('?')[0];
     const signedCallback=req.method==='POST'&&[
      '/api/v1/social/meta/deauthorize','/api/v1/social/meta/data-deletion',
-    ].includes(req.path);
+    ].includes(originalPath);
     if(!signedCallback)validateRequestOrigin(req.method, req.header('origin'), allowed);
     if (unsafe.has(req.method)) {
       const hasBody=Boolean(req.header('transfer-encoding')) || Number(req.header('content-length')||'0')>0;

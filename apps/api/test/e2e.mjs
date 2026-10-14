@@ -46,6 +46,13 @@ async function createVerified(label){
   status(await call('GET','/auth/me',undefined,cookie),200,'me');
   return {email,password,cookie};
 }
+// Meta server-to-server signed callbacks intentionally have no browser Origin.
+for(const route of ['/social/meta/deauthorize','/social/meta/data-deletion']){
+  const response=await fetch(api+route,{method:'POST',headers:{
+   'Content-Type':'application/x-www-form-urlencoded',
+  },body:'signed_request=invalid',redirect:'manual'});
+  assert.equal(response.status,400,route+' must reject invalid signature in controller, not be blocked by CSRF');
+}
 const a=await createVerified('alice');
 const b=await createVerified('bob');
 const slugA='org-a-'+stamp;
