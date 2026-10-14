@@ -16,8 +16,7 @@ async function smoke(){
  if(!addr||typeof addr==='string')throw new Error('Local server failed');
  const profile=await mkdtemp(join(tmpdir(),'browser-lab-smoke-'));
  try{
-  const chromium=(driver==='patchright'?(await import('patchright')).chromium:(await import('playwright')).chromium)
-   as unknown as typeof import('playwright').chromium;
+  const chromium=(driver==='patchright'?(await import('patchright')).chromium:(await import('playwright')).chromium) as unknown as typeof import('playwright').chromium;
   const context=await chromium.launchPersistentContext(profile,{
    executablePath:'/usr/bin/chromium',headless:false,
   });
