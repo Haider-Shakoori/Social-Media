@@ -67,16 +67,26 @@ export function authorizeUrl(network:OAuthNetwork,state:string,verifier?:string)
  });
  return 'https://x.com/i/oauth2/authorize?'+params;
 }
-async function json<T>(url:string,opts:RequestInit):Promise<T>{
+/**
+ * Meta sometimes sends user_id as a JSON integer too large for JS's
+ * safe integer range. Preserve its exact decimal digits for comparisons.
+ */
+function parseProviderJson<T>(raw:string,exactUserIds:boolean):T{
+ const source=exactUserIds
+  ? raw.replace(/("user_id"\s*:\s*)(\d+)(?=\s*[,}])/g,'$1"$2"')
+  : raw;
+ return JSON.parse(source) as T;
+}
+async function json<T>(url:string,opts:RequestInit,exactUserIds=false):Promise<T>{
  let response:Response;
  try{response=await fetch(url,{...opts,signal:AbortSignal.timeout(12000),redirect:'error'});}
  catch{throw new BadGatewayException('Upstream provider unreachable');}
  if(!response.ok)throw new BadGatewayException('Provider returned an unsuccessful response');
- try{return await response.json() as T;}catch{throw new BadGatewayException('Invalid provider response');}
+ try{return parseProviderJson<T>(await response.text(),exactUserIds);}catch{throw new BadGatewayException('Invalid provider response');}
 }
 /** Only a fixed diagnostic stage survives upstream request failures. */
-async function instagramJson<T>(stage:InstagramOAuthStage,url:string,opts:RequestInit):Promise<T>{
- try{return await json<T>(url,opts);}
+async function instagramJson<T>(stage:InstagramOAuthStage,url:string,opts:RequestInit,exactUserIds=false):Promise<T>{
+ try{return await json<T>(url,opts,exactUserIds);}
  catch{throw new InstagramOAuthFailure(stage);}
 }
 type MetaToken={access_token:string;expires_in?:number};
@@ -128,7 +138,7 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
   type IgShort={access_token?:string;user_id?:string|number;permissions?:string[]};
   const response=await instagramJson<IgShort|{data?:IgShort[]}>(
    'instagram_short_exchange','https://api.instagram.com/oauth/access_token',{
-    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form},true);
   const short:IgShort='data' in response?
    (Array.isArray(response.data)&&response.data.length===1?response.data[0]:{} as IgShort):
    response as IgShort;
@@ -140,14 +150,20 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
    'instagram_long_exchange','https://graph.instagram.com/access_token?'+exchange,{method:'GET'});
   if(typeof long.access_token!=='string'||long.access_token.length<10)
    throw new InstagramOAuthFailure('instagram_long_response');
-  const identity=await instagramJson<{id?:string;user_id?:string;username?:string;account_type?:string}>(
-   'instagram_profile_lookup','https://graph.instagram.com/me?fields=id,username,account_type',{
-    method:'GET',headers:{Authorization:'Bearer '+long.access_token}});
+  const identity=await instagramJson<{id?:string;user_id?:string|number;username?:string;account_type?:string}>(
+   'instagram_profile_lookup','https://graph.instagram.com/me?fields=id,user_id,username,account_type',{
+    method:'GET',headers:{Authorization:'Bearer '+long.access_token}},true);
   if(!identity.id||typeof identity.id!=='string'||
    !['BUSINESS','MEDIA_CREATOR','CREATOR'].includes(identity.account_type||''))
    throw new InstagramOAuthFailure('instagram_account_ineligible');
-  if(short.user_id&&String(short.user_id)!==identity.id)
-   throw new InstagramOAuthFailure('instagram_identity_mismatch');
+  // The OAuth user_id is the IG professional ID. /me.id is app-scoped,
+  // so they may legitimately differ; compare the matching user_id fields.
+  if(short.user_id!==undefined && short.user_id!==null){
+   const exchangeUserId=String(short.user_id);
+   const graphUserId=identity.user_id===undefined||identity.user_id===null?'':String(identity.user_id);
+   if(!/^[0-9]+$/.test(exchangeUserId)||!graphUserId||graphUserId!==exchangeUserId)
+    throw new InstagramOAuthFailure('instagram_identity_mismatch');
+  }
   // Requested scopes are not proof of granted scopes. Only record explicit grants when returned.
   const requested=(process.env.INSTAGRAM_SCOPES||'instagram_business_basic').split(',').map(x=>x.trim());
   const scopes=Array.isArray(short.permissions)?
