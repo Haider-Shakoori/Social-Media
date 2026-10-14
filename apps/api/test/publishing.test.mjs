@@ -53,6 +53,11 @@ test('Meta publisher uses authorized Graph POST and never exposes credentials in
   assert.equal(ig,'remote-20');
   assert.equal(calls[1].url.includes('/ig-1/media'),true);
   assert.equal(calls[2].url.includes('/ig-1/media_publish'),true);
+  const igDirect=seal({loginType:'instagram',accessToken:'direct-ig-token'});
+  await assert.rejects(sendMetaPost({platform:'instagram',accountId:'ig-direct',
+   encryptedCredentials:igDirect,caption:'Test',mediaUrls:['https://example.com/image.jpg']},fake),
+   e=>e instanceof PublishOutcomeUnknown&&e.reason==='instagram_login_publishing_not_enabled');
+  assert.equal(calls.length,3,'Instagram Login token never sent to Facebook Graph');
   await assert.rejects(sendMetaPost({platform:'facebook',accountId:'page-1',
    encryptedCredentials:vault,caption:'Hello',mediaUrls:[]},async()=>{throw Error('timeout');}),
    e=>e instanceof PublishOutcomeUnknown);
