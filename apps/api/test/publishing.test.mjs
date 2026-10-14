@@ -26,6 +26,11 @@ test('Meta eligibility requires every independent gate and always excludes X',()
   {network:'x'},{network:'youtube'},
  ])assert.ok(metaPublishingBlockers({...healthy,...patch}).length,JSON.stringify(patch));
  assert.ok(metaPublishingBlockers({...healthy,network:'instagram',scopes:['instagram_basic']}).includes('permission_missing'));
+ const direct={...healthy,network:'instagram',loginType:'instagram',
+  scopes:['instagram_business_basic','instagram_business_content_publish']};
+ assert.deepEqual(metaPublishingBlockers(direct),[]);
+ assert.ok(metaPublishingBlockers({...direct,scopes:['instagram_business_basic']}).includes('permission_missing'));
+ assert.ok(metaPublishingBlockers({...direct,scopes:['instagram_basic','instagram_content_publish']}).includes('permission_missing'));
  assert.equal(supportedMetaFormat('facebook',[]),true);
  assert.equal(supportedMetaFormat('facebook',['https://example.com/a.png']),false);
  assert.equal(supportedMetaFormat('instagram',['https://example.com/a.png']),true);

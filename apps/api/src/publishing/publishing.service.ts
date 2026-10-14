@@ -5,6 +5,9 @@ import {AccessService} from '../tenants/access.service';
 import {EntitlementsService,monthStartUTC} from '../billing/entitlements.service';
 import {metaPublishingBlockers,supportedMetaFormat,type PublishGate} from './guard';
 import {verifyFacebookRemote} from './reconcile';
+import {verifyInstagramPublishedImage} from './instagram-image-publisher';
+import {unseal} from '../social-oauth/oauth-crypto';
+import type {MetaCredentials} from '../social-oauth/meta-account';
 
 type Db=Prisma.TransactionClient;
 export async function prepareMetaTarget(db:Db,brandId:string,postId:string,connectionId:string,
@@ -21,8 +24,13 @@ export async function prepareMetaTarget(db:Db,brandId:string,postId:string,conne
  if(!version)throw new ConflictException('Post has no content version');
  const approval=version.approvals[0];
  const policy=await db.socialProviderPolicy.findUnique({where:{network:connection.platform}});
+ const credentials=connection.encryptedCredentials?unseal<MetaCredentials>(connection.encryptedCredentials):null;
+ const directInstagram=connection.platform==='instagram'&&credentials?.loginType==='instagram';
  const gate:PublishGate={
-  network:connection.platform,featureEnabled:process.env.META_PUBLISHING_ENABLED==='true'&&process.env.META_CONNECT_ENABLED==='true',
+  network:connection.platform,loginType:directInstagram?'instagram':'facebook',
+  featureEnabled:process.env.META_PUBLISHING_ENABLED==='true'&&
+   (directInstagram ? process.env.INSTAGRAM_CONNECT_ENABLED==='true'&&
+     process.env.INSTAGRAM_IMAGE_PUBLISHING_ENABLED==='true' : process.env.META_CONNECT_ENABLED==='true'),
   globalPaused:global?.value!==false,brandPaused:post.brand.publishingPaused,
   archived:!!post.brand.archivedAt,
   mode:connection.mode,connectionState:connection.state,connectionPaused:!!connection.pausedAt,
@@ -84,14 +92,18 @@ export class PublishingService {
   if(!target)throw new NotFoundException('Publishing target unavailable');
   if(target.state!=='UNCERTAIN')return {state:target.state,verified:false,automaticRetry:false};
   if(!target.remoteId||!target.socialConnection.encryptedCredentials||
-     target.socialConnection.platform!=='facebook'||!target.socialConnection.externalAccountId)
-    return {state:'UNCERTAIN',verified:false,automaticRetry:false,
-     nextStep:'Check the actual provider account manually; do not retry this target without resolving duplication risk'};
-  if(!await verifyFacebookRemote({remoteId:target.remoteId,
-    pageId:target.socialConnection.externalAccountId,
-    encryptedCredentials:target.socialConnection.encryptedCredentials}))
-    return {state:'UNCERTAIN',verified:false,automaticRetry:false,
-     nextStep:'Provider could not confirm this exact Page post'};
+   !target.socialConnection.externalAccountId)
+   return {state:'UNCERTAIN',verified:false,automaticRetry:false,
+    nextStep:'Check the provider account manually; never retry a target with unknown outcome'};
+  const credentials=unseal<MetaCredentials>(target.socialConnection.encryptedCredentials);
+  const verified=target.socialConnection.platform==='instagram'&&credentials.loginType==='instagram'?
+   await verifyInstagramPublishedImage(target.remoteId,credentials.accessToken):
+   target.socialConnection.platform==='facebook'?
+    await verifyFacebookRemote({remoteId:target.remoteId,
+     pageId:target.socialConnection.externalAccountId,
+     encryptedCredentials:target.socialConnection.encryptedCredentials}):false;
+  if(!verified)return {state:'UNCERTAIN',verified:false,automaticRetry:false,
+   nextStep:'Provider could not confirm this exact published media ID; do not automatically republish'};
   const updated=await this.db.postTarget.updateMany({where:{id:targetId,state:'UNCERTAIN'},
    data:{state:'PUBLISHED',lastFailureCode:null}});
   if(updated.count)await this.db.platformAuditEvent.create({data:{actorId:user,
