@@ -1,0 +1,40 @@
+name: Experimental browser lab (isolated CI)
+on:
+  pull_request:
+    paths:
+      - 'experimental/browser-lab/**'
+      - 'deploy/experimental/**'
+      - '.github/workflows/experimental-browser-lab.yml'
+  push:
+    branches: ['main', 'feat/**']
+    paths:
+      - 'experimental/browser-lab/**'
+      - 'deploy/experimental/**'
+      - '.github/workflows/experimental-browser-lab.yml'
+permissions:
+  contents: read
+jobs:
+  browser-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies (no browser downloads)
+        working-directory: experimental/browser-lab
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm install --no-audit --no-fund
+      - name: Typecheck and test isolated lab guards
+        working-directory: experimental/browser-lab
+        run: npm test
+      - name: Validate experimental Compose separation
+        run: |
+          BROWSER_LAB_PROXY_MAP_PATH="$PWD/experimental/browser-lab/example.proxy-map.json" \
+          docker compose -f deploy/experimental/compose.yaml --profile experimental config --quiet
+          ! grep -q '^[[:space:]]*ports:' deploy/experimental/compose.yaml
+          ! grep -q '/var/run/docker.sock' deploy/experimental/compose.yaml
+          ! grep -q 'META_PUBLISHING_ENABLED: "true"' deploy/experimental/compose.yaml
+          ! grep -q 'X_CONNECT_ENABLED: "true"' deploy/experimental/compose.yaml
