@@ -476,7 +476,7 @@ try {
 
  let result=await call('GET',base+'/readiness',undefined,b.cookie);
  status(result,200,'owner can view pilot credentials readiness');
- assert.deepEqual(new Set(result.data.providers.map(p=>p.network)),new Set(['meta','x']));
+ assert.deepEqual(new Set(result.data.providers.map(p=>p.network)),new Set(['meta','instagram','x']));
  assert.ok(result.data.providers.every(p=>p.canPublish===false));
  assert.equal(JSON.stringify(result.data).includes('encryptedCredentials'),false);
  status(await call('GET',base+'/readiness',undefined,aCookie),404,'other tenant cannot inspect social OAuth state');
