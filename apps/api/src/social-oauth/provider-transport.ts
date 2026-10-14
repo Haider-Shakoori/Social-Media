@@ -156,14 +156,14 @@ export async function exchangeCode(network:OAuthNetwork,code:string,verifier?:st
   if(!identity.id||typeof identity.id!=='string'||
    !['BUSINESS','MEDIA_CREATOR','CREATOR'].includes(identity.account_type||''))
    throw new InstagramOAuthFailure('instagram_account_ineligible');
-  // The OAuth user_id is the IG professional ID. /me.id is app-scoped,
-  // so they may legitimately differ; compare the matching user_id fields.
-  if(short.user_id!==undefined && short.user_id!==null){
-   const exchangeUserId=String(short.user_id);
-   const graphUserId=identity.user_id===undefined||identity.user_id===null?'':String(identity.user_id);
-   if(!/^[0-9]+$/.test(exchangeUserId)||!graphUserId||graphUserId!==exchangeUserId)
-    throw new InstagramOAuthFailure('instagram_identity_mismatch');
-  }
+  // The long-lived token is derived directly from the short-lived token
+  // issued for this one-time, session-bound OAuth code. /me is looked up with
+  // that new token, so Meta binds this professional profile to the grant.
+  // Do not compare the short response's user_id to either /me.id (app-scoped)
+  // or /me.user_id: those fields are not guaranteed to share an ID namespace
+  // across Meta login responses. Comparing them rejected real valid logins.
+  // We still require a valid, professional /me profile and do not accept a
+  // client-supplied account ID or token.
   // Requested scopes are not proof of granted scopes. Only record explicit grants when returned.
   const requested=(process.env.INSTAGRAM_SCOPES||'instagram_business_basic').split(',').map(x=>x.trim());
   const scopes=Array.isArray(short.permissions)?
