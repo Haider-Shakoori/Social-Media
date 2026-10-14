@@ -1,0 +1,130 @@
+name: social-media-staging
+
+x-app: &app
+  image: social-media-staging/app:local
+  build:
+    context: ../..
+    dockerfile: deploy/staging/Dockerfile
+    args:
+      NEXT_PUBLIC_API_BASE_URL: https://socials.businessos.af/api/v1
+      NEXT_PUBLIC_SITE_URL: https://socials.businessos.af
+  restart: unless-stopped
+  init: true
+  networks: [social_private]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: social_stage
+      POSTGRES_USER: social_stage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate unique PostgreSQL password}
+    volumes:
+      - social_stage_postgres:/var/lib/postgresql/data
+    networks: [social_private]
+    mem_limit: 384m
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U social_stage -d social_stage"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Generate unique Redis password}
+    command: ["/bin/sh", "-ec", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - social_stage_redis:/data
+    networks: [social_private]
+    mem_limit: 128m
+    healthcheck:
+      test: [CMD-SHELL, 'redis-cli -a "$$REDIS_PASSWORD" ping 2>/dev/null | grep -qx PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    networks: [social_private]
+    mem_limit: 96m
+    # No exposed SMTP/UI ports; staging verification messages remain private.
+
+  api:
+    <<: *app
+    command: ["node", "apps/api/dist/main.js"]
+    env_file: .env.staging
+    environment:
+      NODE_ENV: production
+      API_PORT: "4000"
+      CORS_ORIGIN: https://socials.businessos.af
+      WEB_BASE_URL: https://socials.businessos.af
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      REGISTRATION_ENABLED: "false"
+      META_CONNECT_ENABLED: "false"
+      X_CONNECT_ENABLED: "false"
+      X_API_BUDGET_APPROVED: "false"
+      AI_GENERATION_ENABLED: "false"
+      MANUAL_REMINDER_SCHEDULER_ENABLED: "false"
+      PUBLIC_INDEXING_ENABLED: "false"
+      CMS_PUBLISHING_ENABLED: "false"
+      CMS_PUBLIC_ENABLED: "false"
+    ports:
+      - "127.0.0.1:24602:4000"
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      mailpit: {condition: service_started}
+    mem_limit: 512m
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    <<: *app
+    command: ["node", "apps/web/node_modules/next/dist/bin/next", "start", "-p", "3000", "-H", "0.0.0.0"]
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: https://socials.businessos.af/api/v1
+      NEXT_PUBLIC_SITE_URL: https://socials.businessos.af
+      NEXT_PUBLIC_AUTH_ENABLED: "true"
+      PUBLIC_INDEXING_ENABLED: "false"
+    ports:
+      - "127.0.0.1:24601:3000"
+    depends_on:
+      api: {condition: service_healthy}
+    mem_limit: 640m
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: ["node", "apps/connector-worker/dist/index.js"]
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${REDIS_URL:?Private isolated Redis URL required}
+    depends_on:
+      redis: {condition: service_healthy}
+    mem_limit: 128m
+    pids_limit: 96
+
+volumes:
+  social_stage_postgres:
+  social_stage_redis:
+
+networks:
+  social_private:
+    driver: bridge
