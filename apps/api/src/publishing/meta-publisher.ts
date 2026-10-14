@@ -1,5 +1,6 @@
 import {unseal} from '../social-oauth/oauth-crypto';
 import type {MetaCredentials} from '../social-oauth/meta-account';
+import {sendInstagramImage,InstagramPublishUncertain} from './instagram-image-publisher';
 
 const BASE='https://graph.facebook.com/v26.0';
 export class PublishOutcomeUnknown extends Error{
@@ -26,14 +27,25 @@ async function post(path:string,accessToken:string,values:Record<string,string>,
 }
 export async function sendMetaPost(input:{
  platform:'facebook'|'instagram';accountId:string;encryptedCredentials:string;
- caption:string;mediaUrls:string[];
+ caption:string;mediaUrls:string[];grantedScopes?:string[];
 },fetcher:typeof fetch=fetch):Promise<string>{
  if(input.platform!=='facebook'&&input.platform!=='instagram')throw new PublishOutcomeUnknown('unsupported_network');
  const secrets=unseal<MetaCredentials>(input.encryptedCredentials);
  if(!secrets.accessToken)throw new PublishOutcomeUnknown('credentials_missing');
  // This publisher targets graph.facebook.com. Instagram Login credentials must never
  // be sent to that host; a separate reviewed graph.instagram.com publisher is required.
- if(secrets.loginType==='instagram')throw new PublishOutcomeUnknown('instagram_login_publishing_not_enabled');
+ if(secrets.loginType==='instagram'){
+  if(input.platform!=='instagram'||input.mediaUrls.length!==1||
+     process.env.INSTAGRAM_IMAGE_PUBLISHING_ENABLED!=='true')
+   throw new PublishOutcomeUnknown('instagram_login_publishing_not_enabled');
+  try{
+   const result=await sendInstagramImage({accountId:input.accountId,encryptedCredentials:input.encryptedCredentials,
+    caption:input.caption,imageUrl:input.mediaUrls[0],grantedScopes:input.grantedScopes||[]},fetcher);
+   return result.mediaId;
+  }catch(error){
+   throw new PublishOutcomeUnknown(error instanceof InstagramPublishUncertain?error.reason:'instagram_outcome_unknown');
+  }
+ }
  if(input.platform==='facebook'){
   if(input.mediaUrls.length)throw new PublishOutcomeUnknown('unsupported_media');
   return post(input.accountId+'/feed',secrets.accessToken,
