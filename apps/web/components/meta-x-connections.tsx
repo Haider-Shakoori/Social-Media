@@ -29,7 +29,7 @@ export function MetaXConnections({tenantId,workspaceId,brandId}:{tenantId:string
   if(!id)return;
   let active=true;
   void apiCall<{accounts:Choice[];brandId:string}>("/social/oauth/attempts/"+id+"/accounts")
-   .then(result=>{if(active&&result.brandId===brandId){setChoices(result.accounts);setAttempt(id);}})
+   .then(result=>{if(active&&result.brandId===brandId){setChoices(result.accounts);setAttempt(id);} else if(active){setError("Select the brand originally used for authorization.");}})
    .catch(()=>{if(active)setError("The social authorization has expired or belongs to another session.");});
   return()=>{active=false;};
  },[brandId]);
@@ -70,12 +70,12 @@ export function MetaXConnections({tenantId,workspaceId,brandId}:{tenantId:string
  }
  return <section className="mt-7 rounded-2xl border border-white/10 bg-[#07131b] p-5">
   <p className="text-xs font-bold tracking-widest text-emerald-300">OFFICIAL ACCOUNT PILOT</p>
-  <h3 className="mt-3 text-xl font-bold">Connect Facebook, Instagram or X</h3>
-  <p className="mt-2 text-sm leading-7 text-slate-300">OAuth connections are available only during operator-authorized testing. Connecting an account does not allow automatic publishing. X requires separate API budget approval.</p>
+  <h3 className="mt-3 text-xl font-bold">Connect Facebook and Instagram</h3>
+  <p className="mt-2 text-sm leading-7 text-slate-300">Connect an eligible Facebook Page or Instagram professional account securely through Meta. We never ask for your Meta password. Publishing remains disabled; X is manual-only for now.</p>
   {error&&<p role="alert" className="mt-4 text-sm text-rose-200">{error}</p>}
   {note&&<p role="status" className="mt-4 text-sm text-emerald-200">{note}</p>}
   <div className="mt-5 flex flex-wrap gap-3">
-   {(status?.providers||[]).map(p=><div key={p.network} className="rounded-xl border border-white/15 p-4">
+   {(status?.providers||[]).filter(p=>p.network==="meta").map(p=><div key={p.network} className="rounded-xl border border-white/15 p-4">
     <h4 className="font-bold">{p.network==="meta"?"Meta — Facebook + Instagram":"X (Twitter)"}</h4>
     <p className="mt-2 text-xs text-slate-400">{!p.configured?"Developer credentials missing":!p.testingEnabled?"Test access disabled by operator":p.network==="x"&&!p.paidApiConsent?"Cost approval required":"Configured for test authorization"}</p>
     <button type="button" disabled={busy||!p.configured||!p.testingEnabled||(p.network==="x"&&!p.paidApiConsent)}
