@@ -2,18 +2,21 @@ import {createHash} from 'node:crypto';
 
 /** Meta-only, operator-gated account maintenance. No browser cookies or unofficial sessions. */
 const GRAPH='https://graph.facebook.com/v26.0';
+const IG_GRAPH='https://graph.instagram.com';
 export type MetaPlatform='facebook'|'instagram';
-export type MetaCredentials={accessToken:string;userAccessToken?:string;refreshToken?:string};
+export type MetaCredentials={accessToken:string;userAccessToken?:string;refreshToken?:string;loginType?:'facebook'|'instagram'};
 export type MetaAccount={platform:MetaPlatform;externalAccountId:string;credentials:MetaCredentials;expiresAt:Date|null};
 export type MetaHealth={state:'CONNECTED'|'LIMITED'|'RESTRICTED';reason:string;grantedScopes:string[];missingScopes:string[]};
 export type MetaRefresh={credentials:MetaCredentials;expiresAt:Date|null;health:MetaHealth};
-export const requiredMetaScopes=(p:MetaPlatform):string[]=>p==='facebook'
+export const requiredMetaScopes=(p:MetaPlatform,loginType?:'facebook'|'instagram'):string[]=>loginType==='instagram'
+ ? ['instagram_business_basic','instagram_business_content_publish'] : p==='facebook'
  ? ['pages_manage_posts','pages_read_engagement']
  : ['instagram_basic','instagram_content_publish'];
 
-export function metaScopeHealth(platform:MetaPlatform,granted:string[],tokenValid=true):MetaHealth {
+export function metaScopeHealth(platform:MetaPlatform,granted:string[],tokenValid=true,
+ loginType?:'facebook'|'instagram'):MetaHealth {
  const clean=[...new Set(granted.filter(x=>typeof x==='string'))];
- const missing=requiredMetaScopes(platform).filter(scope=>!clean.includes(scope));
+ const missing=requiredMetaScopes(platform,loginType).filter(scope=>!clean.includes(scope));
  return {state:!tokenValid?'RESTRICTED':missing.length?'LIMITED':'CONNECTED',
   reason:!tokenValid?'token_invalid':missing.length?'missing_permissions':'ready_for_review',
   grantedScopes:clean,missingScopes:missing};
@@ -38,6 +41,21 @@ async function metaGet(path:string,token:string,search:Record<string,string>={},
   return data as JsonRecord;
  }catch{throw new MetaAccessError('invalid_response');}
 }
+async function igGet(path:string,token:string,search:Record<string,string>={},fetcher:typeof fetch=fetch):Promise<JsonRecord>{
+ const url=new URL(IG_GRAPH+path);
+ for(const [key,value] of Object.entries(search))url.searchParams.set(key,value);
+ let response:Response;
+ try{response=await fetcher(url.toString(),{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),
+  headers:{Authorization:'Bearer '+token}});}
+ catch{throw new MetaAccessError('temporary');}
+ if(response.status===401||response.status===403)throw new MetaAccessError('restricted');
+ if(!response.ok)throw new MetaAccessError('temporary');
+ try{
+  const data:unknown=await response.json();
+  if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('object required');
+  return data as JsonRecord;
+ }catch{throw new MetaAccessError('invalid_response');}
+}
 async function scopesFor(userToken:string,fetcher:typeof fetch):Promise<string[]> {
  const data=await metaGet('/me/permissions',userToken,{limit:'100'},fetcher);
  if(!Array.isArray(data.data))throw new MetaAccessError('invalid_response');
@@ -50,6 +68,16 @@ function assertIdentity(data:JsonRecord,id:string):void{
 /** Does not return any secret, refresh by itself or authorize posting. */
 export async function inspectMetaAccount(input:MetaAccount,fetcher:typeof fetch=fetch):Promise<MetaHealth>{
  const {platform,externalAccountId,credentials,expiresAt}=input;
+ if(credentials.loginType==='instagram'){
+  if(platform!=='instagram'||!credentials.accessToken)return metaScopeHealth(platform,[],false,'instagram');
+  if(expiresAt&&expiresAt.getTime()<=Date.now())return metaScopeHealth(platform,[],false,'instagram');
+  const identity=await igGet('/me',credentials.accessToken,{fields:'id,username,account_type'},fetcher);
+  assertIdentity(identity,externalAccountId);
+  // Instagram Login does not provide Facebook's /me/permissions interface. A valid
+  // identity is not proof of the content-publishing scope: remain LIMITED until verified.
+  return {state:'LIMITED',reason:'permissions_unverified',grantedScopes:[],missingScopes:
+   requiredMetaScopes(platform,'instagram')};
+ }
  if(!credentials.userAccessToken) return metaScopeHealth(platform,[],false);
  if(expiresAt&&expiresAt.getTime()<=Date.now())return metaScopeHealth(platform,[],false);
  const [granted,identity]=await Promise.all([
@@ -62,6 +90,20 @@ export async function inspectMetaAccount(input:MetaAccount,fetcher:typeof fetch=
 }
 /** Refreshes only an authorized existing Meta account; must never swap to a different page/IG identity. */
 export async function refreshMetaAccount(input:MetaAccount,fetcher:typeof fetch=fetch):Promise<MetaRefresh>{
+ if(input.credentials.loginType==='instagram'){
+  if(input.platform!=='instagram'||!input.credentials.accessToken)throw new MetaAccessError('restricted');
+  if(input.expiresAt&&input.expiresAt.getTime()<=Date.now())throw new MetaAccessError('restricted');
+  // Instagram refresh is permitted only for eligible, unexpired long-lived tokens.
+  const response=await igGet('/refresh_access_token',input.credentials.accessToken,{
+   grant_type:'ig_refresh_token',access_token:input.credentials.accessToken},fetcher);
+  if(typeof response.access_token!=='string'||response.access_token.length<10||
+   typeof response.expires_in!=='number'||response.expires_in<=0)
+   throw new MetaAccessError('invalid_response');
+  const credentials:MetaCredentials={accessToken:response.access_token,loginType:'instagram'};
+  const expiresAt=new Date(Date.now()+response.expires_in*1000);
+  const health=await inspectMetaAccount({...input,credentials,expiresAt},fetcher);
+  return {credentials,expiresAt,health};
+ }
  const {META_APP_ID:id,META_APP_SECRET:secret}=process.env;
  if(!id||!secret||!input.credentials.userAccessToken)throw new MetaAccessError('restricted');
  const tokens=await metaGet('/oauth/access_token',input.credentials.userAccessToken,{
