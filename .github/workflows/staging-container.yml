@@ -40,6 +40,23 @@ jobs:
             --build-arg NEXT_PUBLIC_API_BASE_URL=https://socials.businessos.af/api/v1 \
             --build-arg NEXT_PUBLIC_SITE_URL=https://socials.businessos.af \
             --tag social-media-staging/app:local .
+      - name: Smoke-test built Next.js image
+        run: |
+          docker run -d --name social-staging-web-smoke \
+            --memory 640m -p 127.0.0.1:24851:3000 \
+            --entrypoint node social-media-staging/app:local \
+            apps/web/node_modules/next/dist/bin/next start apps/web -p 3000 -H 0.0.0.0
+          trap 'docker rm -f social-staging-web-smoke >/dev/null 2>&1 || true' EXIT
+          healthy=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:24851/; then healthy=1; break; fi
+            sleep 1
+          done
+          if [ "$healthy" != 1 ]; then
+            docker logs social-staging-web-smoke
+            exit 1
+          fi
+          curl -fsS -o /dev/null http://127.0.0.1:24851/login
       - name: Package GitHub-built image for VPS (main branch only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
