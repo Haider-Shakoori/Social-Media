@@ -73,10 +73,10 @@ export async function inspectMetaAccount(input:MetaAccount,fetcher:typeof fetch=
   if(expiresAt&&expiresAt.getTime()<=Date.now())return metaScopeHealth(platform,[],false,'instagram');
   const identity=await igGet('/me',credentials.accessToken,{fields:'id,username,account_type'},fetcher);
   assertIdentity(identity,externalAccountId);
-  // Instagram Login does not provide Facebook's /me/permissions interface. A valid
-  // identity is not proof of the content-publishing scope: remain LIMITED until verified.
-  return {state:'LIMITED',reason:'permissions_unverified',grantedScopes:[],missingScopes:
-   requiredMetaScopes(platform,'instagram')};
+  // Instagram Login does not provide Facebook's /me/permissions interface.
+  // The token-bound /me identity is valid but scopes have NOT been determined:
+  // do not claim a permission was denied or is missing. Remain LIMITED.
+  return {state:'LIMITED',reason:'permissions_unverified',grantedScopes:[],missingScopes:[]};
  }
  if(!credentials.userAccessToken) return metaScopeHealth(platform,[],false);
  if(expiresAt&&expiresAt.getTime()<=Date.now())return metaScopeHealth(platform,[],false);
