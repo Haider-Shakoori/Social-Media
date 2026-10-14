@@ -7,7 +7,9 @@ import {sendMetaPost,PublishOutcomeUnknown} from './meta-publisher';
 const db=new PrismaClient();
 let running=false;
 export async function processDueMetaTargets(){
- if(process.env.META_PUBLISHING_ENABLED!=='true'||process.env.META_CONNECT_ENABLED!=='true')return;
+ if(process.env.META_PUBLISHING_ENABLED!=='true'||
+   (process.env.META_CONNECT_ENABLED!=='true'&&
+    !(process.env.INSTAGRAM_CONNECT_ENABLED==='true'&&process.env.INSTAGRAM_IMAGE_PUBLISHING_ENABLED==='true')))return;
  if(running)return;
  running=true;
  try{
@@ -58,6 +60,7 @@ export async function processDueMetaTargets(){
      accountId:ready.connection.externalAccountId!,
      encryptedCredentials:ready.connection.encryptedCredentials!,
      caption:ready.version.caption,mediaUrls:ready.version.mediaUrls,
+     grantedScopes:ready.connection.tokenScopes,
     });
     await db.postTarget.updateMany({where:{id:target.id,state:'PUBLISHING'},
      data:{state:'PUBLISHED',remoteId,lastFailureCode:null}});
@@ -80,7 +83,9 @@ async function main(){
   console.log('Meta publisher disabled. No external publishing calls made.');
   return;
  }
- if(process.env.META_CONNECT_ENABLED!=='true')throw Error('Meta provider must be enabled separately');
+ if(process.env.META_CONNECT_ENABLED!=='true'&&
+   !(process.env.INSTAGRAM_CONNECT_ENABLED==='true'&&process.env.INSTAGRAM_IMAGE_PUBLISHING_ENABLED==='true'))
+  throw Error('A reviewed provider must be enabled separately');
  console.log('Meta publisher running with database, provider and account safety gates');
  const timer=setInterval(()=>{void processDueMetaTargets().catch(()=>console.warn('Meta publish worker transient failure'));},6000);
  try{await processDueMetaTargets();}catch{console.warn('Meta worker first pass failed');}
