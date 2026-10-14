@@ -30,6 +30,7 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
  const [postId,setPostId]=useState(""),[scheduled,setScheduled]=useState(""),[timezone,setTimezone]=useState("Asia/Kabul"),[repeat,setRepeat]=useState("once"),[count,setCount]=useState(1);
  const [reason,setReason]=useState("Manually reviewing account safety");
  const [error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
+ const [uploadFile,setUploadFile]=useState<File|null>(null),[uploadReady,setUploadReady]=useState(false);
  const refresh=useCallback(async()=>{
   const [content,calendar,reviews,security,stats]=await Promise.all([
    req<{posts:Post[];campaigns:Campaign[]}>(root+"/studio"),
@@ -40,6 +41,13 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
   ]);
   setPosts(content.posts);setCampaigns(content.campaigns);setSlots(calendar.slots);
   setApprovals(reviews.approvals);setProtection(security);setAnalytics(stats);
+ },[root]);
+ useEffect(()=>{
+  let live=true;
+  void req<{enabled:boolean}>(root+"/studio/media-upload/config")
+   .then(v=>{if(live)setUploadReady(v.enabled);})
+   .catch(()=>{if(live)setUploadReady(false);});
+  return()=>{live=false;};
  },[root]);
  useEffect(()=>{let live=true;setPosts([]);setError("");setNotice("");
   void refresh().catch(e=>{if(live)setError(e instanceof Error?e.message:"Studio data unavailable");});
@@ -61,6 +69,26 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
    const blob=new Blob([card.svg],{type:"image/svg+xml"});
    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=card.filename;a.click();URL.revokeObjectURL(url);
    setNotice("SVG template generated locally. It is not an AI-generated photo.");
+  });
+ }
+ async function uploadImage(){
+  if(!uploadFile||busy)return;
+  await run(async()=>{
+   if(!uploadReady)throw new Error("Image uploads are not configured yet. Ask the platform owner to connect Cloudflare R2.");
+   if(!["image/jpeg","image/png"].includes(uploadFile.type)||uploadFile.size>8*1024*1024||uploadFile.size<=0)
+    throw new Error("Choose a PNG/JPEG image up to 8 MB.");
+   const start=await req<{uploadUrl:string;confirmation:string}>(
+    root+"/studio/media-upload/presign","POST",
+    {fileName:uploadFile.name,mimeType:uploadFile.type,sizeBytes:uploadFile.size});
+   // Direct-to-R2 upload: credentials remain on the API and are never in browser state.
+   const stored=await fetch(start.uploadUrl,{method:"PUT",
+    headers:{"Content-Type":uploadFile.type},body:uploadFile});
+   if(!stored.ok)throw new Error("The media upload failed. Check the storage bucket CORS configuration.");
+   const completed=await req<{media:{url:string}}>(root+"/studio/media-upload/complete","POST",
+    {confirmation:start.confirmation,altText:""});
+   setMedia(previous=>[previous.trim(),completed.media.url].filter(Boolean).join("\n"));
+   setUploadFile(null);
+   setNotice("Image uploaded into your brand media library and inserted into the draft. No post was published.");
   });
  }
  async function createPost(e:FormEvent){
@@ -129,6 +157,17 @@ export function StudioWorkbench({tenantId,workspaceId,brandId}:{tenantId:string;
     </div>
     <form onSubmit={e=>void createPost(e)} className="space-y-4">
      <label className="block text-xs text-slate-300">Editable caption<textarea required minLength={1} rows={6} className={input} value={caption} onChange={e=>setCaption(e.target.value)} maxLength={5000}/></label>
+     <div className="rounded-xl border border-white/10 bg-[#07131b] p-4">
+      <p className="text-sm font-semibold text-white">Upload JPEG / PNG image</p>
+      <p className="mt-1 text-xs text-slate-400">{uploadReady
+       ?"Choose an image up to 8 MB; the file goes directly to your platform media storage."
+       :"Uploads are disabled until the platform owner configures R2 storage and a public image domain."}</p>
+      <input type="file" accept="image/jpeg,image/png" aria-label="Choose image to upload"
+       className="mt-3 block w-full text-sm text-slate-200" onChange={e=>setUploadFile(e.target.files?.[0]||null)}/>
+      <button type="button" disabled={busy||!uploadReady||!uploadFile}
+       onClick={()=>void uploadImage()} className="mt-3 rounded-lg border border-emerald-300/50 px-4 py-2 text-sm text-emerald-200 disabled:opacity-40">
+       {busy?"Working…":"Upload to brand media library"}</button>
+     </div>
      <label className="block text-xs text-slate-300">HTTPS media links (one per line)<textarea rows={3} className={input} value={media} onChange={e=>setMedia(e.target.value)}/></label>
      <label className="block text-xs text-slate-300">Campaign<select className={input} value={campaign} onChange={e=>setCampaign(e.target.value)}><option value="">No campaign</option>{campaigns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
      <div className="flex flex-wrap gap-3"><button disabled={busy} className={primary}>Save private draft</button><button type="button" onClick={()=>void makeCampaign()} className="rounded-xl border border-white/20 px-4 py-3 text-sm">New campaign</button></div>
