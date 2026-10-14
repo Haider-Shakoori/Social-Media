@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY experimental/browser-lab/package.json ./package.json
-RUN npm install --no-audit --no-fund
+RUN npm install --include=dev --no-audit --no-fund
 COPY experimental/browser-lab/tsconfig.json ./tsconfig.json
 COPY experimental/browser-lab/src ./src
 RUN npm run build
