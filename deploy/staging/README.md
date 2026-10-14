@@ -22,13 +22,18 @@ cp deploy/staging/.env.staging.example deploy/staging/.env.staging
 # Ensure the password inside each URL matches its corresponding variable.
 chmod 600 deploy/staging/.env.staging
 docker compose --env-file deploy/staging/.env.staging -f deploy/staging/compose.yaml config --quiet
-docker compose --env-file deploy/staging/.env.staging -f deploy/staging/compose.yaml build
+# Preferred: use the prebuilt image from a validated GitHub staging prerelease.
+# For the merged commit, obtain its 12-character SHA prefix from GitHub.
+# Replace SHA12 with the exact prefix; never use a guessed artifact.
+# curl -fsSL "https://github.com/Haider-Shakoori/Social-Media/releases/download/social-staging-SHA12/social-media-staging-image.tar.zst" \\
+#   | zstd -dc | docker load
+# If unavailable, DO NOT start a resource-intensive VPS build without a new capacity check.
 docker compose --env-file deploy/staging/.env.staging -f deploy/staging/compose.yaml up -d postgres redis mailpit
 docker compose --env-file deploy/staging/.env.staging -f deploy/staging/compose.yaml run --rm api pnpm --filter @social/api db:migrate:deploy
 docker compose --env-file deploy/staging/.env.staging -f deploy/staging/compose.yaml up -d api web worker
 ```
 
-Builds can briefly use much more than the runtime memory limit. On a constrained VPS prefer the image compiled by GitHub Actions, if securely accessible, over a VPS build. Do not build if free disk or memory headroom is unsafe.
+Builds can briefly use much more than the runtime memory limit. On this constrained VPS **do not build locally**. Pull the image built and packaged by GitHub Actions after CI passes, and verify the imported tag with `docker image inspect social-media-staging/app:local` before continuing. Do not build if free disk or memory headroom is unsafe.
 
 ## Runtime safety
 
