@@ -69,6 +69,8 @@ services:
       REGISTRATION_ENABLED: "true"
       EMAIL_VERIFICATION_REQUIRED: "false"
       META_CONNECT_ENABLED: "false"
+      META_HEALTH_MONITOR_ENABLED: "false"
+      META_PUBLISHING_ENABLED: "false"
       X_CONNECT_ENABLED: "false"
       X_API_BUDGET_APPROVED: "false"
       AI_GENERATION_ENABLED: "false"
