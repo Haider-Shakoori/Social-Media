@@ -72,13 +72,13 @@ test('Instagram exchanges code on official hosts and preserves exact professiona
    const u=new URL(url);
    if(u.hostname==='api.instagram.com')return Response.json({access_token:'short-lived-access-token',user_id:'1784140408606515'});
    if(u.pathname==='/access_token')return Response.json({access_token:'long-lived-access-token',expires_in:5184000});
-   return Response.json({id:'app-scoped-pilot-id',user_id:'1784140408606516',username:'attacker',account_type:'BUSINESS'});
+   return Response.json({id:'app-scoped-pilot-id',user_id:'1784140408606516',username:'token_bound_professional',account_type:'BUSINESS'});
   };
   // A new token and its /me profile are bound by Meta, even if the OAuth
   // response and Graph profile report non-equivalent user_id namespaces.
   const differentIds=await exchangeCode('instagram','code');
   assert.equal(differentIds.accounts[0].id,'app-scoped-pilot-id');
-  assert.equal(differentIds.accounts[0].name,'attacker');
+  assert.equal(differentIds.accounts[0].name,'token_bound_professional');
  }finally{
   globalThis.fetch=previousFetch;
   for(const [k,v] of Object.entries(before))if(v===undefined)delete process.env[k];else process.env[k]=v;
