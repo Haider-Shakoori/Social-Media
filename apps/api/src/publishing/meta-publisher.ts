@@ -1,10 +1,10 @@
 import {unseal} from '../social-oauth/oauth-crypto';
 import type {MetaCredentials} from '../social-oauth/meta-account';
+import {PublishOutcomeUnknown} from './publish-errors';
+import {publishInstagramImage} from './instagram-image-publisher';
+export {PublishOutcomeUnknown} from './publish-errors';
 
 const BASE='https://graph.facebook.com/v26.0';
-export class PublishOutcomeUnknown extends Error{
- constructor(readonly reason:string){super('Provider outcome requires manual reconciliation');}
-}
 async function post(path:string,accessToken:string,values:Record<string,string>,
  fetcher:typeof fetch=fetch):Promise<string>{
  let response:Response;
@@ -31,9 +31,15 @@ export async function sendMetaPost(input:{
  if(input.platform!=='facebook'&&input.platform!=='instagram')throw new PublishOutcomeUnknown('unsupported_network');
  const secrets=unseal<MetaCredentials>(input.encryptedCredentials);
  if(!secrets.accessToken)throw new PublishOutcomeUnknown('credentials_missing');
- // This publisher targets graph.facebook.com. Instagram Login credentials must never
- // be sent to that host; a separate reviewed graph.instagram.com publisher is required.
- if(secrets.loginType==='instagram')throw new PublishOutcomeUnknown('instagram_login_publishing_not_enabled');
+ // Business Login access tokens must ONLY be sent to graph.instagram.com.
+ // This is independently gated even if the legacy Meta publisher is enabled.
+ if(secrets.loginType==='instagram'){
+  if(input.platform!=='instagram'||process.env.INSTAGRAM_IMAGE_PUBLISHING_ENABLED!=='true')
+   throw new PublishOutcomeUnknown('instagram_login_publishing_not_enabled');
+  if(input.mediaUrls.length!==1)throw new PublishOutcomeUnknown('unsupported_media');
+  return publishInstagramImage({accountId:input.accountId,accessToken:secrets.accessToken,
+   caption:input.caption,imageUrl:input.mediaUrls[0]},fetcher);
+ }
  if(input.platform==='facebook'){
   if(input.mediaUrls.length)throw new PublishOutcomeUnknown('unsupported_media');
   return post(input.accountId+'/feed',secrets.accessToken,
